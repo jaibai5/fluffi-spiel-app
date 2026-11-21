@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<!-- Fluffis Abenteuer · gebaut 2026-11-21T15:26:04.651Z · sha256:b437436ca857 -->
+<!-- Fluffis Abenteuer · gebaut 2026-11-21T16:06:50.212Z · sha256:757f9129b3a1 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#7cc4ff">
@@ -263,7 +263,7 @@ svg { display: block; }
 .parents-box button { background: #3d8bfd; color: #fff; border-radius: 10px; padding: 10px 16px; margin: 4px; font-weight: 700; }
 .parents-box button.danger { background: #e2557a; }
 .tgl { display: block; margin: 8px 0; font-size: 18px; }
-.tgl input { width: 22px; height: 22px; vertical-align: middle; margin-right: 8px; }
+.tgl input[type=checkbox] { width: 22px; height: 22px; vertical-align: middle; margin-right: 8px; }
 .p-btns { display: flex; justify-content: space-between; flex-wrap: wrap; }
 
 /* Namensabfrage */
@@ -276,7 +276,14 @@ svg { display: block; }
 .name-btns { display: flex; gap: 4vmin; align-items: center; }
 .name-ok { background: #c9f7d8; }
 .name-hint { margin: 0; font-size: 2.4vmin; font-weight: 600; color: #778; text-align: center; }
-.parents-box input[type=text] { font: inherit; font-size: 18px; padding: 6px 10px; border: 2px solid #c9d6e3; border-radius: 8px; margin-left: 8px; }
+.parents-box input[type=text] { font: inherit; font-size: 18px; width: 220px; padding: 6px 10px; border: 2px solid #c9d6e3; border-radius: 8px; margin-left: 8px; }
+
+/* Versionshinweis und App-Info */
+.version-tag { position: absolute; right: 2vmin; bottom: 1.6vmin; z-index: 2; font-size: 2.6vmin; font-weight: 700; color: #4f6f8f; background: rgba(255, 255, 255, .7); border-radius: 3vmin; padding: .8vmin 2vmin; }
+.info-overlay { cursor: default; }
+.info-box { margin: 0; max-height: 92vh; overflow-y: auto; }
+.info-box th { width: 32%; vertical-align: top; }
+.parents-box select { font: inherit; font-size: 16px; padding: 5px 8px; border-radius: 8px; border: 2px solid #c9d6e3; }
 
 </style>
 </head>
@@ -284,12 +291,33 @@ svg { display: block; }
 <div id="app"></div>
 <div id="bubble" aria-live="polite"></div>
 <noscript>Bitte JavaScript einschalten.</noscript>
+
+
+
+
+
+
+
+
+
+
+
+
 <script>
 /* ==== js/core.js ==== */
 /* Fluffi – Kern: Namensraum, Zufall, Spielstand, Stufenlogik, Ton, Sprache.
    Beim Laden wird kein DOM angefasst, damit die Tests die Logik in Node laden koennen. */
 var F = (typeof window !== 'undefined' ? window : globalThis).F = {};
-F.VERSION = '0.2.0';
+F.VERSION = '0.3.0';
+F.BUILD_DATE = '21.11.2026 17:06';   // wird von tools/build.mjs ersetzt
+F.APP_INFO = {
+  name: 'Fluffis Abenteuer',
+  idea: 'M.G.',
+  ideaRoles: 'Idee, Konzeptvorgaben, Architektur-Anforderungen, Test und Abnahme',
+  developer: 'KI Claude Opus 5.5 (Anthropic)',   // bei Modellwechsel anpassen (AGENTS.md)
+  developerRoles: 'Recherche, Spielkonzept, Programmierung, Grafik, Tests, Dokumentation'
+};
+F.buildDate = function () { return /^__/.test(F.BUILD_DATE) ? 'Entwicklungsstand' : F.BUILD_DATE; };
 F.MAX_LEVEL = 6;
 F.games = {};
 F.gameOrder = [];
@@ -364,7 +392,7 @@ F.defaultState = function () {
     askedName: false, // Namensabfrage schon gezeigt
     unlocked: ['bow_pink'],
     outfit: { bow: 'bow_pink', hat: null, scarf: null, glasses: null },
-    settings: { speech: true, sound: true }
+    settings: { speech: true, sound: true, voiceMode: 'auto' }
   };
 };
 
@@ -374,7 +402,8 @@ F.mergeState = function (s) {
   Object.keys(d).forEach(function (k) {
     if (s[k] === undefined || s[k] === null || typeof s[k] !== typeof d[k]) s[k] = d[k];
   });
-  Object.keys(d.settings).forEach(function (k) { if (typeof s.settings[k] !== 'boolean') s.settings[k] = d.settings[k]; });
+  Object.keys(d.settings).forEach(function (k) { if (typeof s.settings[k] !== typeof d.settings[k]) s.settings[k] = d.settings[k]; });
+  if (['auto', 'clips', 'browser'].indexOf(s.settings.voiceMode) < 0) s.settings.voiceMode = 'auto';
   Object.keys(d.outfit).forEach(function (k) { if (!(k in s.outfit)) s.outfit[k] = d.outfit[k]; });
   if (!Array.isArray(s.unlocked)) s.unlocked = d.unlocked.slice();
   s.childName = F.cleanName(s.childName);
@@ -476,10 +505,16 @@ F.sound = {
   }
 };
 
-/* ---------- Sprachausgabe (Web Speech API, de-DE) ---------- */
+/* ---------- Sprachausgabe ----------
+   Zwei Wege:
+   1. Aufnahmen (F.voice): vorab erzeugte Ansagen (src/js/voice-data.js), Wiedergabe ueber WebAudio wie die Toene.
+      Funktioniert auch dort, wo der Browser keine Sprachsynthese hat (Silk auf dem Fire-Tablet).
+   2. Browser-Stimme (Web Speech API, de-DE): kann auch den Namen des Kindes sprechen.
+   Einstellung settings.voiceMode: 'auto' (Aufnahmen, wenn vorhanden, sonst Browser) | 'clips' | 'browser'. */
 F.speech = {
   supported: false,
   voice: null,
+  voices: [],
   lastText: '',
   init: function () {
     this.supported = typeof window !== 'undefined' && 'speechSynthesis' in window &&
@@ -488,21 +523,39 @@ F.speech = {
     var self = this;
     var pick = function () {
       var vs = window.speechSynthesis.getVoices() || [];
+      self.voices = vs;
       var de = vs.filter(function (v) { return /^de([-_]|$)/i.test(v.lang); });
       self.voice = de.filter(function (v) { return /female|frau|anna|katja|hedda|petra|vicki|marlene|google/i.test(v.name); })[0] || de[0] || null;
     };
     pick();
     if ('onvoiceschanged' in window.speechSynthesis) window.speechSynthesis.onvoiceschanged = pick;
   },
+  /* welcher Weg wird genutzt? 'clips' | 'browser' | 'none' */
+  route: function () {
+    var mode = (F.state && F.state.settings.voiceMode) || 'auto';
+    var clips = F.voice && F.voice.has();
+    if (mode === 'clips') return clips ? 'clips' : 'none';
+    if (mode === 'browser') return this.supported ? 'browser' : (clips ? 'clips' : 'none');
+    if (clips) return 'clips';
+    return this.supported ? 'browser' : 'none';
+  },
   /* Liefert ein Promise, das nach dem Sprechen (oder spaetestens nach einer Schaetzzeit) erfuellt ist. */
   say: function (text, opts) {
     opts = opts || {};
     if (!opts.noRepeat) this.lastText = text;
     if (F.ui && F.ui.bubble) F.ui.bubble(text);
+    if (typeof window !== 'undefined' && window.__said) window.__said.push(text);
     var est = 700 + text.length * 75;
-    if (!this.supported || !F.state || !F.state.settings.speech) {
+    var route = F.state && F.state.settings.speech ? this.route() : 'none';
+    if (route === 'clips') {
+      this.stopBrowser();
+      var p = F.voice.say(text);
+      return Promise.race([p, F.wait(est + 6000)]);
+    }
+    if (route === 'none') {
       return new Promise(function (res) { setTimeout(res, opts.silentWait === false ? 0 : Math.min(est, 1500)); });
     }
+    if (F.voice) F.voice.stop();
     var self = this;
     return new Promise(function (res) {
       var done = false;
@@ -522,7 +575,8 @@ F.speech = {
     });
   },
   repeat: function () { if (this.lastText) return this.say(this.lastText); return Promise.resolve(); },
-  stop: function () { if (this.supported) { try { window.speechSynthesis.cancel(); } catch (e) { } } }
+  stopBrowser: function () { if (this.supported) { try { window.speechSynthesis.cancel(); } catch (e) { } } },
+  stop: function () { this.stopBrowser(); if (F.voice) F.voice.stop(); }
 };
 
 /* Kleine Helfer */
@@ -535,15 +589,108 @@ F.cleanName = function (n) {
 F.childName = function () { return (F.state && F.state.childName) || ''; };
 /* ", Lena" oder "" – fuer Saetze wie "Hallo, Lena!" */
 F.nameComma = function () { var n = F.childName(); return n ? ', ' + n : ''; };
+F.PRAISE = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Juhu, richtig!', 'Spitze!', 'Wunderbar!'];
+F.PRAISE_NAME = ['Super', 'Toll gemacht', 'Klasse', 'Prima'];   // + ", Name!"
+F.RETRY = ['Versuch es nochmal!', 'Hmm, schau nochmal genau.', 'Fast! Probier es nochmal.'];
 F.pickPraise = function (rng) {
   rng = rng || F.rng;
   var n = F.childName();
-  if (n && rng.chance(0.35)) return rng.pick(['Super, ', 'Toll gemacht, ', 'Klasse, ', 'Prima, ']) + n + '!';
-  return rng.pick(['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Juhu, richtig!', 'Spitze!', 'Wunderbar!']);
+  if (n && rng.chance(0.35)) return rng.pick(F.PRAISE_NAME) + ', ' + n + '!';
+  return rng.pick(F.PRAISE);
 };
-F.pickRetry = function (rng) {
-  return (rng || F.rng).pick(['Versuch es nochmal!', 'Hmm, schau nochmal genau.', 'Fast! Probier es nochmal.']);
+F.pickRetry = function (rng) { return (rng || F.rng).pick(F.RETRY); };
+
+/* ==== js/voice.js ==== */
+/* Aufgenommene Ansagen: Wiedergabe ueber WebAudio (gleicher Weg wie die Toene, funktioniert in Silk).
+   Daten: F.VOICE = { voice, rate, clips: { schluessel: base64-MP3 } } aus src/js/voice-data.js (generiert von tools/voice/).
+   Ein Text wird in Saetze zerlegt; jeder Satz wird ueber einen normalisierten Schluessel gesucht.
+   Saetze mit dem Kindernamen werden ohne den Namen gesucht ("Super, Mia!" -> "Super!"). */
+F.voice = {
+  buffers: {},
+  missing: {},
+  token: 0,
+  current: null,
+
+  has: function () { return !!(F.VOICE && F.VOICE.clips && Object.keys(F.VOICE.clips).length); },
+  count: function () { return F.VOICE && F.VOICE.clips ? Object.keys(F.VOICE.clips).length : 0; },
+
+  key: function (s) {
+    return String(s).toLowerCase().replace(/[.,!?:;„“"()…]/g, ' ').replace(/\s+/g, ' ').trim();
+  },
+  sentences: function (text) {
+    return String(text).split(/(?<=[.!?])\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  },
+  stripName: function (sentence) {
+    var n = F.childName();
+    if (!n) return sentence;
+    var esc = n.replace(/[-\s]/g, function (c) { return c === '-' ? '\\-' : '\\s'; });
+    return sentence.replace(new RegExp(',?\\s*' + esc + '(?=[\\s,.!?]|$)', 'g'), '');
+  },
+  resolve: function (sentence) {
+    var clips = (F.VOICE && F.VOICE.clips) || {};
+    var k = this.key(sentence);
+    if (clips[k]) return k;
+    k = this.key(this.stripName(sentence));
+    if (k && clips[k]) return k;
+    return null;
+  },
+  decode: function (k) {
+    var self = this;
+    if (this.buffers[k]) return Promise.resolve(this.buffers[k]);
+    var ctx = F.sound.ensure();
+    if (!ctx) return Promise.reject(new Error('kein AudioContext'));
+    var bin = atob(F.VOICE.clips[k]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Promise(function (res, rej) {
+      var p = ctx.decodeAudioData(arr.buffer, function (buf) { self.buffers[k] = buf; res(buf); }, rej);
+      if (p && p.catch) p.catch(rej);
+    });
+  },
+  playBuffer: function (buf) {
+    var self = this;
+    var ctx = F.sound.ctx;
+    return new Promise(function (res) {
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = (F.VOICE && F.VOICE.rate) || 1;
+      src.connect(ctx.destination);
+      var done = false;
+      var fin = function () { if (!done) { done = true; res(); } };
+      src.onended = fin;
+      self.current = src;
+      src.start();
+      setTimeout(fin, (buf.duration / src.playbackRate.value) * 1000 + 400);
+    });
+  },
+  say: async function (text) {
+    var my = ++this.token;
+    this.stopCurrent();
+    var parts = this.sentences(text);
+    for (var i = 0; i < parts.length; i++) {
+      if (my !== this.token) return;
+      var k = this.resolve(parts[i]);
+      if (!k) { this.missing[parts[i]] = 1; continue; }
+      var buf;
+      try { buf = await this.decode(k); } catch (e) { continue; }
+      if (my !== this.token) return;
+      await this.playBuffer(buf);
+      if (i < parts.length - 1) await F.wait(120);
+    }
+  },
+  /* Haeufige Ansagen vorab dekodieren, damit die erste Ansage nicht stockt */
+  warmup: function (texts) {
+    var self = this;
+    texts.forEach(function (t) { self.sentences(t).forEach(function (s) { var k = self.resolve(s); if (k) self.decode(k).catch(function () { }); }); });
+  },
+  stopCurrent: function () { if (this.current) { try { this.current.stop(); } catch (e) { } this.current = null; } },
+  stop: function () { this.token++; this.stopCurrent(); }
 };
+
+/* ==== js/voice-data.js ==== */
+/* GENERIERT von tools/voice/generate.py – nicht von Hand bearbeiten.
+   Noch keine Aufnahmen erzeugt (Freigabe fuer TTS-Werkzeug ausstehend, siehe .agentic/DECISIONS/D-003). */
+F.VOICE = { voice: null, rate: 1, generated: null, clips: {} };
 
 /* ==== js/rewards.js ==== */
 /* Belohnungen: Outfit-Teile und Sticker, freigeschaltet ab einer Gesamt-Sternzahl ("at").
@@ -832,11 +979,14 @@ F.ui.start = function () {
       '<div class="snow"></div>' +
       '<h1 class="title">Fluffis Abenteuer</h1>' +
       '<div class="start-fluffi bounce">' + F.art.fluffi(F.state.outfit, 'normal') + '</div>' +
-      '<button class="big-play" aria-label="Spielen">▶</button>';
+      '<button class="big-play" aria-label="Spielen">▶</button>' +
+      '<button class="version-tag" aria-label="App-Info">ℹ️ Version ' + F.VERSION + ' · ' + F.buildDate() + '</button>';
     F.ui.snow(scr.querySelector('.snow'), 24);
+    F.onTap(scr.querySelector('.version-tag'), function () { F.ui.appInfo(scr); });
     var go = function () {
       F.sound.ensure();
       F.sound.play('pop');
+      F.voice.warmup(['Hallo! Ich bin Fluffi. Wie heißt du?', 'Hallo, da bist du ja wieder! Tippe auf ein Bild.', 'Super! Toll gemacht! Versuch es nochmal!']);
       var de = document.documentElement;
       var rfs = de.requestFullscreen || de.webkitRequestFullscreen;
       if (rfs) { try { var p = rfs.call(de); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
@@ -904,7 +1054,7 @@ F.ui.hub = function (greet) {
         if (open) { F.speech.stop(); F.ui.runGame(id); }
         else {
           F.sound.play('wrong');
-          F.speech.say('Hier brauchst du ' + F.numWord(g.unlockAt) + ' Sterne. Du hast schon ' + F.numWord(st.stars) + '.');
+          F.speech.say('Hier brauchst du ' + F.numWord(g.unlockAt) + ' Sterne. Sammle noch mehr Sterne!');
           b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
         }
       }, true);
@@ -1181,28 +1331,35 @@ F.ui.parents = function () {
   F.show(function (scr) {
     scr.classList.add('parents-screen');
     var st = F.state;
-    var voice = F.speech.supported ? (F.speech.voice ? F.speech.voice.name + ' (' + F.speech.voice.lang + ')' : 'keine deutsche Stimme gefunden, Standardstimme') : 'nicht verfügbar';
+    var bvoice = F.speech.supported ? (F.speech.voice ? F.speech.voice.name + ' (' + F.speech.voice.lang + ')' : 'keine deutsche Stimme (' + F.speech.voices.length + ' Stimmen insgesamt)') : 'nicht vorhanden';
+    var clips = F.voice.has() ? F.voice.count() + ' Ansagen' + (F.VOICE.generated ? ' (erzeugt ' + F.VOICE.generated + ')' : '') : 'nicht enthalten';
+    var routeName = { clips: 'Aufnahmen', browser: 'Browser-Stimme', none: 'keine (nur Bilder)' }[F.speech.route()];
+    var mode = st.settings.voiceMode;
+    var opt = function (v, t) { return '<option value="' + v + '"' + (mode === v ? ' selected' : '') + '>' + t + '</option>'; };
     var rows = F.gameOrder.map(function (id) {
       var g = F.games[id];
       return '<tr><td>' + g.icon + ' ' + g.title + '</td><td>' + g.skill + '</td><td>' + (st.levels[id] || 1) + ' / ' + F.MAX_LEVEL + '</td><td>' + (st.plays[id] || 0) + '</td></tr>';
     }).join('');
     scr.innerHTML = '<div class="parents-box">' +
       '<h2>Elternbereich</h2>' +
-      '<p>Sterne gesamt: <b>' + st.stars + '</b> · Version ' + F.VERSION + '</p>' +
+      '<p>Sterne gesamt: <b>' + st.stars + '</b> · Version ' + F.VERSION + ' vom ' + F.buildDate() + '</p>' +
       '<label class="tgl">Name des Kindes: <input type="text" id="opt-name" maxlength="20" autocomplete="off" placeholder="z. B. Lena"></label>' +
       '<label class="tgl"><input type="checkbox" id="opt-speech"' + (st.settings.speech ? ' checked' : '') + '> Sprachausgabe</label>' +
       '<label class="tgl"><input type="checkbox" id="opt-sound"' + (st.settings.sound ? ' checked' : '') + '> Töne</label>' +
-      '<p class="small">Stimme: ' + voice + ' <button id="test-voice">Testen</button></p>' +
+      '<label class="tgl">Stimme: <select id="opt-voice">' + opt('auto', 'Automatisch') + opt('clips', 'Aufnahmen (gehen überall)') + opt('browser', 'Browser-Stimme (spricht auch den Namen)') + '</select> <button id="test-voice">Testen</button></label>' +
+      '<p class="small">Aktiv: <b>' + routeName + '</b> · Aufnahmen: ' + clips + ' · Browser-Stimme: ' + bvoice + '</p>' +
       '<table><tr><th>Spiel</th><th>Lernbereich</th><th>Stufe</th><th>Runden</th></tr>' + rows + '</table>' +
       '<p class="small">Die Stufe passt sich automatisch an. Alle Daten bleiben nur auf diesem Gerät (localStorage), es gibt kein Konto, kein Tracking und keine Werbung. Empfehlung: kurze Spielzeiten von 15–20 Minuten.</p>' +
-      '<div class="p-btns"><button id="p-reset" class="danger">Fortschritt löschen</button>' +
+      '<div class="p-btns"><button id="p-reset" class="danger">Fortschritt löschen</button><button id="p-info">ℹ️ App-Info</button>' +
       '<button id="p-back">Zurück zum Spiel</button></div></div>';
     var nameIn = scr.querySelector('#opt-name');
     nameIn.value = st.childName || '';
     nameIn.addEventListener('change', function () { st.childName = F.cleanName(nameIn.value); st.askedName = true; nameIn.value = st.childName; F.store.save(st); });
     scr.querySelector('#opt-speech').addEventListener('change', function (e) { st.settings.speech = e.target.checked; F.store.save(st); });
     scr.querySelector('#opt-sound').addEventListener('change', function (e) { st.settings.sound = e.target.checked; F.store.save(st); });
-    scr.querySelector('#test-voice').addEventListener('click', function () { F.speech.say('Hallo, ich bin Fluffi. Eins, zwei, drei!'); });
+    scr.querySelector('#opt-voice').addEventListener('change', function (e) { st.settings.voiceMode = e.target.value; F.store.save(st); F.ui.parents(); });
+    scr.querySelector('#test-voice').addEventListener('click', function () { F.sound.ensure(); F.speech.say('Hallo, ich bin Fluffi. Eins, zwei, drei!'); });
+    scr.querySelector('#p-info').addEventListener('click', function () { F.ui.appInfo(scr); });
     scr.querySelector('#p-reset').addEventListener('click', function () {
       if (window.confirm('Wirklich den gesamten Fortschritt (Sterne, Stufen, Geschenke) löschen?')) {
         F.store.reset();
@@ -1242,6 +1399,26 @@ F.ui.askName = function () {
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { inp.blur(); done(true); } });
     F.speech.say('Hallo! Ich bin Fluffi. Wie heißt du? Mama oder Papa können deinen Namen hier eintippen.');
   });
+};
+
+/* ---------- App-Info / Impressum ---------- */
+F.ui.appInfo = function (scr) {
+  var I = F.APP_INFO;
+  var ov = F.el('div', 'overlay info-overlay');
+  ov.innerHTML = '<div class="parents-box info-box">' +
+    '<h2>🐧 ' + I.name + '</h2>' +
+    '<p><b>Version ' + F.VERSION + '</b> · Stand ' + F.buildDate() + '</p>' +
+    '<table>' +
+    '<tr><th>Idee &amp; Architektur</th><td><b>' + I.idea + '</b><br><span class="small">' + I.ideaRoles + '</span></td></tr>' +
+    '<tr><th>Entwickelt von</th><td><b>' + I.developer + '</b><br><span class="small">' + I.developerRoles + '</span></td></tr>' +
+    '<tr><th>Lerninhalte</th><td>angelehnt an den Orientierungsplan für Bildung und Erziehung Baden-Württemberg (Vorläuferfähigkeiten für die Schule)</td></tr>' +
+    '<tr><th>Stimme</th><td>' + (F.VOICE && F.VOICE.voice ? 'Piper-TTS, Stimme ' + F.VOICE.voice + ' (rhasspy/piper-voices)' : 'Sprachausgabe des Browsers') + '</td></tr>' +
+    '<tr><th>Datenschutz</th><td>Keine Konten, kein Tracking, keine Werbung. Spielstand und Name bleiben nur auf diesem Gerät.</td></tr>' +
+    '</table>' +
+    '<p class="small">Privates Familienprojekt. Fluffi ist einem Kuscheltier nachempfunden.</p>' +
+    '<div class="p-btns"><span></span><button class="info-close">Schließen</button></div></div>';
+  scr.appendChild(ov);
+  ov.querySelector('.info-close').addEventListener('click', function () { ov.remove(); });
 };
 
 /* ==== js/games/fische.js ==== */
@@ -1431,7 +1608,7 @@ F.ui.askName = function () {
       });
       stopSwim();
       ctx.sound('good');
-      await ctx.say(F.pickPraise(rng) + ' Das sind ' + F.countPhrase(t.n, 'Fisch', 'Fische', 'ein') + '.');
+      await ctx.say(F.pickPraise(rng) + (t.n === 1 ? ' Das ist ein Fisch.' : ' Das sind ' + F.numWord(t.n) + ' Fische.'));
     }
 
     async function doCount(t) {
@@ -1472,7 +1649,7 @@ F.ui.askName = function () {
       shore.innerHTML = bucketHtml();
       var bf = shore.querySelector('.bucket-fish');
       addFishTo(bf, t.n);
-      await ctx.say('Im Eimer sind ' + F.countPhrase(t.n, 'Fisch', 'Fische', 'ein') + '.');
+      await ctx.say(t.n === 1 ? 'Im Eimer ist ein Fisch.' : 'Im Eimer sind ' + F.numWord(t.n) + ' Fische.');
       if (!ctx.alive()) return;
       if (t.type === 'plus') {
         await ctx.say('Schau, ein Fisch springt dazu!');
@@ -1554,6 +1731,7 @@ F.ui.askName = function () {
     return { pairs: L.pairs, mode: L.mode, cards: rng.shuffle(cards) };
   };
   F.gen.memoryLevels = LEVELS;
+  F.gen.memoryAnimals = ANIMALS;
 
   function faceHtml(c) {
     if (c.kind === 'digit') return '<span class="num">' + c.value + '</span>';
@@ -1658,6 +1836,7 @@ F.ui.askName = function () {
     return { total: total, speed: L.speed, target: target, items: items };
   };
   F.gen.huepfLevels = LEVELS;
+  F.gen.huepfColors = STAR_COLORS;
 
   function starPath(c, x, y, r) {
     c.beginPath();
@@ -1897,6 +2076,8 @@ F.ui.askName = function () {
     return { unit: unit, seq: seq, missing: missing, answer: answer, options: rng.shuffle(opts), atEnd: missing === total - 1 };
   };
   F.gen.musterLevels = LEVELS;
+  F.gen.musterColors = COLORS;
+  F.gen.musterShapes = SHAPES;
   F.gen.musterKey = itemKey;
 
   /* "ein roter Kreis", "ein rotes Herz", "ein lila Stern" */
@@ -2186,7 +2367,7 @@ F.ui.askName = function () {
         ctx.progressBar(elapsed / plan.duration);
         if (elapsed >= plan.duration && !done) {
           done = true; running = false;
-          ctx.say('Was für eine Fahrt! Du hast ' + F.countPhrase(fish, 'Fisch', 'Fische') + ' gesammelt.').then(function () {
+          ctx.say('Was für eine Fahrt! ' + (fish === 0 ? 'Nächstes Mal sammelst du bestimmt Fische.' : fish > 10 ? 'Du hast ganz viele Fische gesammelt.' : 'Du hast ' + F.countPhrase(fish, 'Fisch', 'Fische') + ' gesammelt.')).then(function () {
             ctx.finish({ stars: F.starsFor(mistakes, Math.max(4, tasks)) });
           });
         }
