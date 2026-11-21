@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<!-- Fluffis Abenteuer · gebaut 2026-11-21T15:20:57.662Z · sha256:7266030d08d7 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7cc4ff">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Fluffis Abenteuer</title>
+<style>
+/* Fluffis Abenteuer – Stil. Ziel: Fire HD 8 quer (ca. 960x600 CSS-Pixel), grosse Tippflaechen. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #7cc4ff; }
+body {
+  font-family: "Nunito", "Trebuchet MS", "Segoe UI", system-ui, sans-serif; font-weight: 800; color: #3b3650;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation; overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; padding: 0; touch-action: manipulation; }
+svg { display: block; }
+#app { position: fixed; inset: 0; }
+.screen { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(#8fd0ff, #dff2ff 70%); }
+
+/* Schneefall */
+.snow { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.snow i { position: absolute; top: -40px; color: #fff; opacity: .8; font-style: normal; animation: fall linear infinite; }
+@keyframes fall { to { transform: translate(30px, 110vh) rotate(360deg); } }
+
+/* Allgemeine Knoepfe */
+.round-btn {
+  width: 13vmin; height: 13vmin; min-width: 56px; min-height: 56px; border-radius: 50%;
+  background: #fff; box-shadow: 0 .8vmin 0 #b9cde0, 0 1vmin 2vmin rgba(0, 0, 0, .15);
+  font-size: 6.5vmin; display: flex; align-items: center; justify-content: center; position: relative;
+  transition: transform .1s;
+}
+.round-btn:active { transform: translateY(.6vmin) scale(.96); box-shadow: 0 .2vmin 0 #b9cde0; }
+.round-btn.big { width: 18vmin; height: 18vmin; font-size: 9vmin; }
+
+/* Start */
+.start-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.title { margin: 0; font-size: 8vmin; color: #fff; text-shadow: 0 .6vmin 0 #4f8fc9; letter-spacing: .05em; z-index: 1; }
+.start-fluffi { width: 42vmin; z-index: 1; cursor: pointer; }
+.big-play {
+  margin-top: 2vmin; width: 22vmin; height: 22vmin; border-radius: 50%; background: #35c46b; color: #fff;
+  font-size: 11vmin; box-shadow: 0 1.2vmin 0 #22914c; z-index: 1; padding-left: 2vmin; animation: pulse 1.6s infinite;
+}
+@keyframes pulse { 50% { transform: scale(1.07); } }
+.bounce { animation: bounce 2s ease-in-out infinite; }
+@keyframes bounce { 50% { transform: translateY(-3vmin); } }
+
+/* Fluffi-Animationen */
+.fluffi .f-wing-l { transform-origin: 40px 130px; }
+.fluffi .f-wing-r { transform-origin: 160px 130px; }
+.fluffi.wave .f-wing-r { animation: wave 1.4s ease-in-out infinite; }
+@keyframes wave { 50% { transform: rotate(-28deg); } }
+.f-eyes { animation: blink 4s infinite; transform-origin: 100px 88px; }
+@keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+
+/* Karte */
+.hub-screen { background: linear-gradient(#7cc4ff, #bfe5ff 45%, #9fd3f5 46%, #7fc0ea 60%); }
+.hub-island { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 72%; }
+.hub-path { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hub-path path { fill: none; stroke: #9cc7e8; stroke-width: 1.2; stroke-dasharray: 2.5 2; vector-effect: non-scaling-stroke; stroke-width: 6px; stroke-linecap: round; }
+.topbar { position: absolute; top: 2vmin; left: 2vmin; right: 2vmin; display: flex; align-items: center; gap: 2vmin; z-index: 3; }
+.star-count { background: #fff; border-radius: 10vmin; padding: 1vmin 3vmin 1vmin 1.6vmin; display: flex; align-items: center; gap: 1vmin; box-shadow: 0 .8vmin 0 #b9cde0; }
+.star-count .big-star { color: #ffc933; font-size: 8vmin; line-height: 1; text-shadow: 0 0 .1vmin #c99a00; }
+.star-count .num { font-size: 7vmin; }
+.next-gift { flex: 1; display: flex; align-items: center; gap: 1.5vmin; max-width: 40vmin; }
+.gift-bar { flex: 1; height: 3vmin; background: rgba(255, 255, 255, .6); border-radius: 2vmin; overflow: hidden; }
+.gift-bar div { height: 100%; background: linear-gradient(90deg, #ff8fb3, #ffc933); border-radius: 2vmin; }
+.gift-ico { font-size: 7vmin; animation: wobble 2.5s infinite; }
+.top-btns { margin-left: auto; display: flex; gap: 2vmin; }
+.hold-ring { position: absolute; inset: -.6vmin; width: calc(100% + 1.2vmin); height: calc(100% + 1.2vmin); transform: rotate(-90deg); pointer-events: none; }
+.hold-ring circle { fill: none; stroke: #35c46b; stroke-width: 3; stroke-dasharray: 107; stroke-dashoffset: 107; }
+.parent-btn { font-size: 5vmin; opacity: .75; }
+.parent-btn.holding .hold-ring circle { transition: stroke-dashoffset 2s linear; stroke-dashoffset: 0; }
+
+.hub-fluffi { position: absolute; left: 1vmin; bottom: 4vmin; width: 26vmin; z-index: 2; cursor: pointer; }
+.hub-fluffi.hop { animation: hop .6s; }
+@keyframes hop { 40% { transform: translateY(-6vmin) rotate(-5deg); } }
+
+.station {
+  position: absolute; width: 21vmin; height: 21vmin; margin: -10.5vmin 0 0 -10.5vmin; border-radius: 50%;
+  background: var(--c); box-shadow: 0 1.2vmin 0 rgba(0, 0, 0, .22), inset 0 -1.2vmin 0 rgba(0, 0, 0, .12);
+  border: 1vmin solid #fff; display: flex; align-items: center; justify-content: center; z-index: 2; transition: transform .12s;
+}
+.station.open { animation: floaty 3s ease-in-out infinite; }
+.station:nth-of-type(2n) { animation-delay: -1.5s; }
+@keyframes floaty { 50% { transform: translateY(-1.2vmin); } }
+.station:active { transform: scale(.94); }
+.station .st-icon { font-size: 11vmin; line-height: 1; filter: drop-shadow(0 .4vmin 0 rgba(0, 0, 0, .2)); }
+.station.locked { background: #b8c4d0; }
+.station.locked .st-icon { opacity: .35; filter: grayscale(1); }
+.st-lock { position: absolute; font-size: 7vmin; }
+.st-need { position: absolute; bottom: -5vmin; background: #fff; border-radius: 3vmin; padding: .3vmin 1.8vmin; font-size: 3.6vmin; white-space: nowrap; color: #c99a00; box-shadow: 0 .5vmin 0 #b9cde0; }
+.st-level { position: absolute; bottom: -3.6vmin; display: flex; gap: .7vmin; background: #fff; padding: .8vmin 1.2vmin; border-radius: 3vmin; box-shadow: 0 .5vmin 0 #b9cde0; }
+.st-level i, .res-level i { width: 1.8vmin; height: 1.8vmin; border-radius: 50%; background: #dfe7ef; display: block; }
+.st-level i.on, .res-level i.on { background: #ffc933; }
+
+/* Sprechblase */
+#bubble {
+  position: fixed; left: 50%; top: 15vmin; transform: translate(-50%, -40vmin); max-width: 60vw; z-index: 50;
+  background: rgba(255, 255, 255, .92); border-radius: 3vmin; padding: .8vmin 2.4vmin; font-size: 2.6vmin; color: #5a5470;
+  box-shadow: 0 .6vmin 1.6vmin rgba(0, 0, 0, .12); transition: transform .3s; pointer-events: none; text-align: center;
+}
+#bubble::before { content: "🔊 "; }
+#bubble.show { transform: translate(-50%, 0); }
+
+/* Spielrahmen */
+.game-head { position: absolute; top: 0; left: 0; right: 0; height: 17vmin; display: flex; align-items: center; justify-content: space-between; padding: 0 2vmin; z-index: 5; }
+.head-title { font-size: 9vmin; }
+.progress { display: flex; gap: 1.5vmin; align-items: center; }
+.progress i { width: 4vmin; height: 4vmin; border-radius: 50%; background: rgba(255, 255, 255, .7); border: .5vmin solid #fff; display: block; transition: all .3s; }
+.progress i.now { background: #fff; transform: scale(1.25); }
+.progress i.done { background: #ffc933; border-color: #fff; }
+.pbar { width: 50vw; height: 4vmin; background: rgba(255, 255, 255, .6); border-radius: 3vmin; position: relative; }
+.pbar div { height: 100%; background: linear-gradient(90deg, #ffc933, #ff8fb3); border-radius: 3vmin; }
+.pbar-goal { position: absolute; right: -3vmin; top: -2.5vmin; font-size: 6vmin; }
+.stage { position: absolute; top: 17vmin; left: 0; right: 0; bottom: 0; }
+.game-canvas { position: absolute; inset: 0; touch-action: none; }
+
+.answers { display: flex; gap: 4vmin; justify-content: center; align-items: center; }
+.answer-card {
+  width: 20vmin; height: 20vmin; background: #fff; border-radius: 4vmin; box-shadow: 0 1.2vmin 0 #b9cde0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform .15s;
+}
+.answer-card:active { transform: scale(.95); }
+.answer-card .num { font-size: 11vmin; line-height: 1; color: #2a3f7a; }
+.answer-card .num-dots { width: 9vmin; height: 5vmin; }
+.answer-card .num-dots svg { width: 100%; height: 100%; }
+.answer-card.correct, .bucket.correct { background: #c9f7d8; box-shadow: 0 1.2vmin 0 #35c46b; transform: scale(1.08); }
+.shake { animation: shake .45s; }
+@keyframes shake { 20%, 60% { transform: translateX(-2vmin); } 40%, 80% { transform: translateX(2vmin); } }
+.hint { animation: hint 1s ease-in-out infinite; box-shadow: 0 0 0 1.2vmin #ffd23f, 0 1.2vmin 0 #b9cde0 !important; }
+@keyframes hint { 50% { transform: scale(1.08); } }
+.pop-in { animation: popin .4s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes popin { from { transform: scale(0); } }
+
+/* Fische fangen */
+.g-fische .screen, .g-fische { background: linear-gradient(#8fd0ff, #cdeeff 30%); }
+.sea { position: absolute; left: 0; right: 0; top: 0; height: 58%; }
+.waves { position: absolute; top: 0; left: 0; right: 0; height: 4vmin; background: radial-gradient(circle at 2vmin -1vmin, transparent 2.6vmin, #4aa8f0 2.7vmin) repeat-x; background-size: 5vmin 4vmin; }
+.water { position: absolute; top: 3.5vmin; left: 0; right: 0; bottom: 0; background: linear-gradient(#4aa8f0, #2f86d6); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.swim-fish { position: absolute; left: 0; top: 0; width: 13vmin; height: 8vmin; cursor: pointer; padding: 1vmin; }
+.swim-fish svg, .fly-fish svg, .b-fish svg { width: 100%; height: 100%; }
+.fly-fish { position: fixed; width: 13vmin; height: 8vmin; z-index: 30; transition: transform .5s ease-in, opacity .5s; pointer-events: none; }
+.shore { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; background: linear-gradient(#f4fbff, #dcefff); display: flex; align-items: center; justify-content: center; }
+.bucket {
+  position: relative; width: 44vmin; height: 26vmin; background: linear-gradient(#ffb36b, #ff8c42); border-radius: 2vmin 2vmin 8vmin 8vmin;
+  border: .8vmin solid #4e4a5e; display: flex; align-items: center; justify-content: center; padding: 1.5vmin;
+}
+.bucket.tappable { cursor: pointer; }
+.bucket-fish { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: .8vmin; max-width: 100%; }
+.bucket-fish.many .b-fish, .bucket-fish.many .b-slot { width: 6.4vmin; height: 4vmin; }
+.bucket-fish.lots .b-fish, .bucket-fish.lots .b-slot { width: 5.4vmin; height: 3.4vmin; }
+.b-fish, .b-slot { width: 8vmin; height: 5vmin; }
+.b-slot { border: .5vmin dashed rgba(78, 74, 94, .5); border-radius: 3vmin; }
+.target { position: absolute; left: -24vmin; top: 50%; transform: translateY(-50%); background: #fff; border-radius: 3vmin; padding: 1.5vmin; display: flex; flex-direction: column; align-items: center; box-shadow: 0 1vmin 0 #b9cde0; }
+.target svg { width: 12vmin; height: 12vmin; }
+.target .num { font-size: 9vmin; line-height: 1; color: #2a3f7a; }
+.two-buckets { display: flex; gap: 8vmin; }
+.two-buckets .bucket { width: 36vmin; }
+.big-hint { font-size: 12vmin; animation: bounce 1.2s infinite; }
+.jump-in { animation: jumpin .8s; }
+@keyframes jumpin { from { transform: translateY(-30vmin) rotate(180deg); opacity: 0; } }
+.jump-out { animation: jumpout .8s forwards; }
+@keyframes jumpout { to { transform: translateY(-40vmin) rotate(-200deg); opacity: 0; } }
+
+/* Memory */
+.g-memory { background: linear-gradient(#c9b6ff, #efe8ff); }
+.mem-grid {
+  position: absolute; inset: 1vmin 4vmin 3vmin; display: grid; gap: 2vmin;
+  grid-template-columns: repeat(var(--cols), min(19vmin, calc((100vw - 8vmin) / var(--cols) - 2vmin)));
+  grid-template-rows: repeat(var(--rows), min(19vmin, calc((83vh - 6vmin) / var(--rows) - 2vmin)));
+  justify-content: center; align-content: center;
+}
+.mem-card { perspective: 600px; width: 100%; height: 100%; }
+.mem-inner { position: relative; width: 100%; height: 100%; transition: transform .35s; transform-style: preserve-3d; }
+.mem-card.flipped .mem-inner { transform: rotateY(180deg); }
+.mem-back, .mem-front { position: absolute; inset: 0; border-radius: 2.5vmin; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 .8vmin 0 rgba(0, 0, 0, .18); }
+.mem-back { background: linear-gradient(135deg, #7b5cff, #a98bff); color: #fff; font-size: 8vmin; border: .7vmin solid #fff; }
+.mem-front { background: #fff; transform: rotateY(180deg); border: .7vmin solid #fff; }
+.mem-front .emo { font-size: 11vmin; line-height: 1; }
+.mem-front .emo.shadow { filter: brightness(0); opacity: .85; }
+.mem-front .num { font-size: 11vmin; color: #2a3f7a; }
+.mem-front .dots-svg { width: 80%; height: 80%; }
+.mem-card.matched .mem-front { border-color: #35c46b; animation: popin .4s; }
+
+/* Huepfen / Schlitten */
+.tap-hint { position: absolute; left: 50%; top: 40%; font-size: 14vmin; animation: tap 1s infinite; pointer-events: none; }
+@keyframes tap { 50% { transform: translateY(2vmin) scale(.9); } }
+.hud-target { position: absolute; top: 2vmin; right: 3vmin; background: #fff; border-radius: 4vmin; padding: 1vmin 2.5vmin 1vmin 1.5vmin; display: flex; align-items: center; gap: 1vmin; box-shadow: 0 .8vmin 0 #b9cde0; pointer-events: none; }
+.hud-target svg { width: 8vmin; height: 8vmin; }
+.hud-target .cnt { font-size: 6vmin; }
+.steer { position: absolute; bottom: 3vmin; width: 18vmin; height: 18vmin; border-radius: 50%; background: rgba(255, 255, 255, .85); font-size: 9vmin; color: #3d8bfd; box-shadow: 0 1vmin 0 #b9cde0; z-index: 2; }
+.steer.left { left: 3vmin; } .steer.right { right: 3vmin; }
+.steer:active { transform: scale(.92); }
+
+/* Muster */
+.g-muster { background: linear-gradient(#a7f0e4, #e9fffb); }
+.chain-wrap { position: absolute; top: 4vmin; left: 0; right: 0; height: 42%; display: flex; align-items: center; justify-content: center; }
+.chain { display: flex; gap: 1.6vmin; background: rgba(255, 255, 255, .7); padding: 2.5vmin; border-radius: 4vmin; }
+.chain-item { width: min(14vmin, 10vw); height: min(14vmin, 10vw); animation: popin .4s backwards; display: flex; align-items: center; justify-content: center; }
+.chain-item svg { width: 100%; height: 100%; }
+.chain-item.gap { border: .8vmin dashed #14b8a6; border-radius: 2.5vmin; background: #fff; animation: hint 1.4s ease-in-out infinite; }
+.chain-item .q { font-size: 9vmin; color: #14b8a6; }
+.chain.wave .chain-item { animation: wavey .6s; }
+.chain.wave .chain-item:nth-child(2n) { animation-delay: .1s; }
+@keyframes wavey { 50% { transform: translateY(-2.5vmin); } }
+.shape-answers { position: absolute; bottom: 6vmin; left: 0; right: 0; }
+.shape-card { padding: 2.5vmin; }
+.shape-card svg { width: 100%; height: 100%; }
+
+/* Ergebnis */
+.result-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vmin; background: radial-gradient(circle, #fff6c9, #ffd9e6 60%, #c9e6ff); }
+.res-fluffi { width: 30vmin; z-index: 1; }
+.jump { animation: hop 1s ease-in-out infinite; }
+.res-stars { display: flex; gap: 3vmin; z-index: 1; }
+.res-stars span { font-size: 16vmin; line-height: 1; color: #e3e3ea; transition: all .4s cubic-bezier(.3, 1.8, .5, 1); transform: scale(.7); }
+.res-stars span.on { color: #ffc933; transform: scale(1.1); text-shadow: 0 0 3vmin #ffe58a; }
+.res-level { display: flex; align-items: center; gap: .8vmin; font-size: 7vmin; z-index: 1; }
+.lvl-up { color: #35c46b; animation: bounce 1s infinite; margin-right: 1vmin; }
+.res-btns { display: flex; gap: 6vmin; z-index: 1; margin-top: 1vmin; }
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.confetti i { position: absolute; top: -3vmin; width: 1.6vmin; height: 2.6vmin; border-radius: .4vmin; animation: fall linear infinite; }
+.overlay { position: absolute; inset: 0; background: rgba(40, 30, 70, .55); z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+.gift-box { font-size: 34vmin; }
+.wobble { animation: wobble 1s infinite; }
+@keyframes wobble { 25% { transform: rotate(-8deg) scale(1.05); } 75% { transform: rotate(8deg) scale(1.05); } }
+.gift-sticker { font-size: 34vmin; background: #fff; border-radius: 6vmin; padding: 2vmin 5vmin; }
+.gift-fluffi { width: 44vmin; background: #fff; border-radius: 50%; padding: 4vmin; }
+.tap-on { font-size: 9vmin; margin-top: 2vmin; animation: tap 1s infinite; }
+
+/* Kleiderschrank */
+.wardrobe-screen { background: linear-gradient(#ffd0e1, #fff2f7); }
+.wr-body { position: absolute; top: 17vmin; left: 0; right: 0; bottom: 0; display: flex; gap: 3vmin; padding: 0 3vmin 3vmin; }
+.wr-preview { width: 38vmin; flex-shrink: 0; align-self: center; }
+.wr-cats { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2vmin; }
+.wr-row { display: flex; gap: 1.6vmin; align-items: center; flex-wrap: wrap; }
+.wr-cat-ico { font-size: 8vmin; width: 10vmin; text-align: center; }
+.wr-item { width: 14vmin; height: 16vmin; background: #fff; border-radius: 3vmin; box-shadow: 0 .8vmin 0 #e7b9cb; padding: 1vmin; position: relative; display: flex; align-items: center; justify-content: center; }
+.wr-item svg { width: 100%; height: 100%; }
+.wr-item.on { box-shadow: 0 0 0 1vmin #35c46b, 0 .8vmin 0 #e7b9cb; }
+.wr-item.locked { background: #eee; }
+.wr-item .st-need { bottom: -2vmin; font-size: 3vmin; }
+.wr-item .st-lock { position: static; font-size: 6vmin; }
+
+/* Album */
+.album-screen { background: linear-gradient(#ffe7b3, #fff8e6); }
+.album-grid { position: absolute; top: 17vmin; left: 3vmin; right: 3vmin; bottom: 3vmin; display: grid; grid-template-columns: repeat(auto-fill, minmax(18vmin, 1fr)); gap: 3vmin; align-content: start; overflow-y: auto; padding: 1vmin; }
+.sticker { height: 20vmin; background: #fff; border-radius: 4vmin; box-shadow: 0 1vmin 0 #e8cf94; display: flex; align-items: center; justify-content: center; position: relative; border: .8vmin dashed #f2d27c; }
+.sticker .st-emoji { font-size: 12vmin; }
+.sticker.locked { background: #f6f1e4; }
+.sticker .st-q { font-size: 10vmin; color: #d8c79d; }
+.sticker .st-need { bottom: -2.6vmin; font-size: 3vmin; }
+
+/* Elternbereich */
+.parents-screen { background: #eef3f8; overflow-y: auto; }
+.parents-box { max-width: 760px; margin: 3vh auto; background: #fff; border-radius: 16px; padding: 20px 28px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, .08); }
+.parents-box h2 { margin-top: 0; }
+.parents-box table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.parents-box td, .parents-box th { border-bottom: 1px solid #e3e8ee; padding: 6px; text-align: left; }
+.parents-box .small { font-size: 13px; color: #667; }
+.parents-box button { background: #3d8bfd; color: #fff; border-radius: 10px; padding: 10px 16px; margin: 4px; font-weight: 700; }
+.parents-box button.danger { background: #e2557a; }
+.tgl { display: block; margin: 8px 0; font-size: 18px; }
+.tgl input { width: 22px; height: 22px; vertical-align: middle; margin-right: 8px; }
+.p-btns { display: flex; justify-content: space-between; flex-wrap: wrap; }
+
+/* Namensabfrage */
+.name-screen { display: flex; align-items: center; justify-content: center; gap: 5vmin; }
+.name-fluffi { width: 34vmin; z-index: 1; }
+.name-box { z-index: 1; background: #fff; border-radius: 5vmin; padding: 3vmin 4vmin; display: flex; flex-direction: column; align-items: center; gap: 2.5vmin; box-shadow: 0 1.2vmin 0 #b9cde0; max-width: 56vw; }
+.name-q { font-size: 9vmin; }
+.name-input { font: inherit; font-size: 6vmin; width: 46vmin; max-width: 50vw; text-align: center; border: .6vmin solid #9cc7e8; border-radius: 3vmin; padding: 1.2vmin 2vmin; color: #3b3650; user-select: text; -webkit-user-select: text; }
+.name-input:focus { outline: none; border-color: #3d8bfd; }
+.name-btns { display: flex; gap: 4vmin; align-items: center; }
+.name-ok { background: #c9f7d8; }
+.name-hint { margin: 0; font-size: 2.4vmin; font-weight: 600; color: #778; text-align: center; }
+.parents-box input[type=text] { font: inherit; font-size: 18px; padding: 6px 10px; border: 2px solid #c9d6e3; border-radius: 8px; margin-left: 8px; }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="bubble" aria-live="polite"></div>
+<noscript>Bitte JavaScript einschalten.</noscript>
+<script>
+/* ==== js/core.js ==== */
+/* Fluffi – Kern: Namensraum, Zufall, Spielstand, Stufenlogik, Ton, Sprache.
+   Beim Laden wird kein DOM angefasst, damit die Tests die Logik in Node laden koennen. */
+var F = (typeof window !== 'undefined' ? window : globalThis).F = {};
+F.VERSION = '0.1.0';
+F.MAX_LEVEL = 6;
+F.games = {};
+F.gameOrder = [];
+F.gen = {};   // reine Aufgaben-Generatoren (testbar)
+
+F.registerGame = function (def) {
+  F.games[def.id] = def;
+  F.gameOrder.push(def.id);
+};
+
+/* ---------- Zufall (seedbar, fuer Tests reproduzierbar) ---------- */
+F.makeRng = function (seed) {
+  var a = (seed >>> 0) || 1;
+  function next() {
+    a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  var r = {
+    next: next,
+    int: function (min, max) { return min + Math.floor(next() * (max - min + 1)); },
+    pick: function (arr) { return arr[Math.floor(next() * arr.length)]; },
+    shuffle: function (arr) {
+      var b = arr.slice();
+      for (var i = b.length - 1; i > 0; i--) {
+        var j = Math.floor(next() * (i + 1));
+        var t = b[i]; b[i] = b[j]; b[j] = t;
+      }
+      return b;
+    },
+    sample: function (arr, n) { return r.shuffle(arr).slice(0, n); },
+    chance: function (p) { return next() < p; }
+  };
+  return r;
+};
+F.rng = F.makeRng((Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0);
+
+/* ---------- Zahlwoerter ---------- */
+F.NUM_WORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn'];
+F.numWord = function (n) { return F.NUM_WORDS[n] || String(n); };
+/* "einen Fisch" / "drei Fische" */
+F.countPhrase = function (n, sing, plur, singArticle) {
+  if (n === 1) return (singArticle || 'einen') + ' ' + sing;
+  return F.numWord(n) + ' ' + plur;
+};
+
+/* Antwortmoeglichkeiten rund um die richtige Zahl, alle verschieden, im Bereich */
+F.gen.numberOptions = function (rng, answer, min, max, count) {
+  count = count || 3;
+  var opts = [answer];
+  var deltas = rng.shuffle([-1, 1, -2, 2, -3, 3]);
+  for (var i = 0; i < deltas.length && opts.length < count; i++) {
+    var v = answer + deltas[i];
+    if (v >= min && v <= max && opts.indexOf(v) < 0) opts.push(v);
+  }
+  for (var v2 = min; opts.length < count && v2 <= max; v2++) if (opts.indexOf(v2) < 0) opts.push(v2);
+  return rng.shuffle(opts);
+};
+
+/* ---------- Spielstand ---------- */
+F.defaultState = function () {
+  return {
+    v: 1,
+    stars: 0,
+    levels: {},       // spielId -> Stufe 1..6
+    plays: {},        // spielId -> Anzahl Durchgaenge
+    best: {},         // spielId -> beste Sternzahl
+    goodStreak: {},   // aufeinanderfolgende 2-Sterne-Durchgaenge
+    lowStreak: {},    // aufeinanderfolgende 1-Stern-Durchgaenge
+    childName: '',    // Vorname des Kindes (nur lokal), leer = ohne Namen
+    askedName: false, // Namensabfrage schon gezeigt
+    unlocked: ['bow_pink'],
+    outfit: { bow: 'bow_pink', hat: null, scarf: null, glasses: null },
+    settings: { speech: true, sound: true }
+  };
+};
+
+F.mergeState = function (s) {
+  var d = F.defaultState();
+  if (!s || typeof s !== 'object' || s.v !== 1) return d;
+  Object.keys(d).forEach(function (k) {
+    if (s[k] === undefined || s[k] === null || typeof s[k] !== typeof d[k]) s[k] = d[k];
+  });
+  Object.keys(d.settings).forEach(function (k) { if (typeof s.settings[k] !== 'boolean') s.settings[k] = d.settings[k]; });
+  Object.keys(d.outfit).forEach(function (k) { if (!(k in s.outfit)) s.outfit[k] = d.outfit[k]; });
+  if (!Array.isArray(s.unlocked)) s.unlocked = d.unlocked.slice();
+  s.childName = F.cleanName(s.childName);
+  if (typeof s.stars !== 'number' || s.stars < 0 || !isFinite(s.stars)) s.stars = 0;
+  return s;
+};
+
+F.store = {
+  key: 'fluffi.v1',
+  load: function () {
+    try {
+      var raw = localStorage.getItem(this.key);
+      if (raw) return F.mergeState(JSON.parse(raw));
+    } catch (e) { /* defekter oder gesperrter Speicher -> Neustart */ }
+    return F.defaultState();
+  },
+  save: function (st) {
+    try { localStorage.setItem(this.key, JSON.stringify(st)); } catch (e) { /* Speicher voll/gesperrt */ }
+  },
+  reset: function () {
+    try { localStorage.removeItem(this.key); } catch (e) { }
+  }
+};
+
+/* ---------- Bewertung und Stufen ---------- */
+/* Sterne aus Fehlern je Aufgabe: immer mindestens 1 Stern. */
+F.starsFor = function (mistakes, tasks) {
+  var ratio = mistakes / Math.max(1, tasks);
+  if (ratio <= 0.2) return 3;
+  if (ratio <= 0.6) return 2;
+  return 1;
+};
+
+F.applyResult = function (state, gameId, stars) {
+  stars = Math.max(1, Math.min(3, stars | 0));
+  var lvl = state.levels[gameId] || 1;
+  var good = state.goodStreak[gameId] || 0;
+  var low = state.lowStreak[gameId] || 0;
+  var change = 0;
+  state.plays[gameId] = (state.plays[gameId] || 0) + 1;
+  state.best[gameId] = Math.max(state.best[gameId] || 0, stars);
+  state.stars += stars;
+
+  if (stars === 3) { good = 0; low = 0; if (lvl < F.MAX_LEVEL) { lvl++; change = 1; } }
+  else if (stars === 2) { low = 0; good++; if (good >= 2) { good = 0; if (lvl < F.MAX_LEVEL) { lvl++; change = 1; } } }
+  else { good = 0; low++; if (low >= 2) { low = 0; if (lvl > 1) { lvl--; change = -1; } } }
+
+  state.levels[gameId] = lvl;
+  state.goodStreak[gameId] = good;
+  state.lowStreak[gameId] = low;
+  var newRewards = F.rewards ? F.rewards.checkUnlocks(state) : [];
+  return { level: lvl, change: change, stars: stars, newRewards: newRewards };
+};
+
+F.isGameUnlocked = function (state, gameId) {
+  var g = F.games[gameId];
+  return !!g && state.stars >= (g.unlockAt || 0);
+};
+
+/* ---------- Toene (WebAudio, ohne Dateien) ---------- */
+F.sound = {
+  ctx: null,
+  ensure: function () {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return this.ctx; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { this.ctx = new AC(); } catch (e) { this.ctx = null; }
+    return this.ctx;
+  },
+  tone: function (freq, dur, type, delay, vol, slideTo) {
+    var c = this.ctx;
+    if (!c) return;
+    var t0 = c.currentTime + (delay || 0);
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.18, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  },
+  play: function (name) {
+    if (!F.state || !F.state.settings.sound) return;
+    if (!this.ensure()) return;
+    var s = this;
+    switch (name) {
+      case 'tap': s.tone(660, 0.08, 'triangle', 0, 0.12); break;
+      case 'pop': s.tone(520, 0.12, 'sine', 0, 0.2, 980); break;
+      case 'good': [523, 659, 784].forEach(function (f, i) { s.tone(f, 0.18, 'triangle', i * 0.09, 0.18); }); break;
+      case 'wrong': s.tone(300, 0.18, 'sine', 0, 0.14, 220); s.tone(240, 0.22, 'sine', 0.16, 0.12, 180); break;
+      case 'jump': s.tone(400, 0.2, 'square', 0, 0.06, 800); break;
+      case 'bump': s.tone(140, 0.25, 'sawtooth', 0, 0.1, 70); break;
+      case 'star': [988, 1319, 1568].forEach(function (f, i) { s.tone(f, 0.15, 'sine', i * 0.06, 0.12); }); break;
+      case 'win': [523, 659, 784, 1047, 784, 1047].forEach(function (f, i) { s.tone(f, 0.22, 'triangle', i * 0.12, 0.18); }); break;
+      case 'gift': [784, 988, 1175, 1568].forEach(function (f, i) { s.tone(f, 0.3, 'sine', i * 0.1, 0.16); }); break;
+    }
+  }
+};
+
+/* ---------- Sprachausgabe (Web Speech API, de-DE) ---------- */
+F.speech = {
+  supported: false,
+  voice: null,
+  lastText: '',
+  init: function () {
+    this.supported = typeof window !== 'undefined' && 'speechSynthesis' in window &&
+      typeof window.SpeechSynthesisUtterance !== 'undefined';
+    if (!this.supported) return;
+    var self = this;
+    var pick = function () {
+      var vs = window.speechSynthesis.getVoices() || [];
+      var de = vs.filter(function (v) { return /^de([-_]|$)/i.test(v.lang); });
+      self.voice = de.filter(function (v) { return /female|frau|anna|katja|hedda|petra|vicki|marlene|google/i.test(v.name); })[0] || de[0] || null;
+    };
+    pick();
+    if ('onvoiceschanged' in window.speechSynthesis) window.speechSynthesis.onvoiceschanged = pick;
+  },
+  /* Liefert ein Promise, das nach dem Sprechen (oder spaetestens nach einer Schaetzzeit) erfuellt ist. */
+  say: function (text, opts) {
+    opts = opts || {};
+    if (!opts.noRepeat) this.lastText = text;
+    if (F.ui && F.ui.bubble) F.ui.bubble(text);
+    var est = 700 + text.length * 75;
+    if (!this.supported || !F.state || !F.state.settings.speech) {
+      return new Promise(function (res) { setTimeout(res, opts.silentWait === false ? 0 : Math.min(est, 1500)); });
+    }
+    var self = this;
+    return new Promise(function (res) {
+      var done = false;
+      var fin = function () { if (!done) { done = true; res(); } };
+      try {
+        window.speechSynthesis.cancel();
+        var u = new window.SpeechSynthesisUtterance(text);
+        u.lang = 'de-DE';
+        if (self.voice) u.voice = self.voice;
+        u.rate = opts.rate || 0.92;
+        u.pitch = 1.2;
+        u.onend = fin; u.onerror = fin;
+        // Chromium-Android verschluckt manchmal speak() direkt nach cancel()
+        setTimeout(function () { window.speechSynthesis.speak(u); }, 60);
+      } catch (e) { fin(); }
+      setTimeout(fin, est + 2500);
+    });
+  },
+  repeat: function () { if (this.lastText) return this.say(this.lastText); return Promise.resolve(); },
+  stop: function () { if (this.supported) { try { window.speechSynthesis.cancel(); } catch (e) { } } }
+};
+
+/* Kleine Helfer */
+F.wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+/* Vorname bereinigen: nur Buchstaben, Leerzeichen, Bindestrich; max. 20 Zeichen */
+F.cleanName = function (n) {
+  if (typeof n !== 'string') return '';
+  return n.replace(/[^A-Za-zÀ-ÖØ-öø-ÿĀ-žß \-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
+};
+F.childName = function () { return (F.state && F.state.childName) || ''; };
+/* ", Lena" oder "" – fuer Saetze wie "Hallo, Lena!" */
+F.nameComma = function () { var n = F.childName(); return n ? ', ' + n : ''; };
+F.pickPraise = function (rng) {
+  rng = rng || F.rng;
+  var n = F.childName();
+  if (n && rng.chance(0.35)) return rng.pick(['Super, ', 'Toll gemacht, ', 'Klasse, ', 'Prima, ']) + n + '!';
+  return rng.pick(['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Juhu, richtig!', 'Spitze!', 'Wunderbar!']);
+};
+F.pickRetry = function (rng) {
+  return (rng || F.rng).pick(['Versuch es nochmal!', 'Hmm, schau nochmal genau.', 'Fast! Probier es nochmal.']);
+};
+
+/* ==== js/rewards.js ==== */
+/* Belohnungen: Outfit-Teile und Sticker, freigeschaltet ab einer Gesamt-Sternzahl ("at").
+   Die Abstaende wachsen langsam, damit es am Anfang schnell und spaeter regelmaessig Geschenke gibt. */
+F.rewards = {
+  items: [
+    { id: 'bow_pink', type: 'bow', name: 'rosa Schleife', color: '#ff8fb3', at: 0 },
+    { id: 'st_fish', type: 'sticker', name: 'Fisch', emoji: '🐟', at: 2 },
+    { id: 'bow_blue', type: 'bow', name: 'blaue Schleife', color: '#5aa9ff', at: 4 },
+    { id: 'hat_wool', type: 'hat', style: 'wool', name: 'Wollmütze', color: '#e64a5f', color2: '#fff', at: 7 },
+    { id: 'st_star', type: 'sticker', name: 'Stern', emoji: '⭐', at: 9 },
+    { id: 'scarf_red', type: 'scarf', style: 'dots', name: 'Schal mit Punkten', color: '#e64a5f', at: 12 },
+    { id: 'st_seal', type: 'sticker', name: 'Robbe', emoji: '🦭', at: 15 },
+    { id: 'glasses_sun', type: 'glasses', style: 'sun', name: 'Sonnenbrille', color: '#2b2b38', at: 18 },
+    { id: 'bow_gold', type: 'bow', name: 'goldene Schleife', color: '#ffc933', at: 21 },
+    { id: 'st_whale', type: 'sticker', name: 'Wal', emoji: '🐳', at: 24 },
+    { id: 'hat_crown', type: 'hat', style: 'crown', name: 'Krone', at: 28 },
+    { id: 'st_snowman', type: 'sticker', name: 'Schneemann', emoji: '⛄', at: 32 },
+    { id: 'scarf_rainbow', type: 'scarf', style: 'rainbow', name: 'Regenbogen-Schal', color: '#ff5d5d', at: 36 },
+    { id: 'hat_party', type: 'hat', style: 'party', name: 'Partyhut', color: '#8e5bd6', at: 40 },
+    { id: 'st_polar', type: 'sticker', name: 'Eisbär', emoji: '🐻‍❄️', at: 45 },
+    { id: 'glasses_heart', type: 'glasses', style: 'heart', name: 'Herzbrille', color: '#ff5d8f', at: 50 },
+    { id: 'bow_mint', type: 'bow', name: 'Minz-Schleife', color: '#5fd6b4', color2: '#ffe066', at: 55 },
+    { id: 'hat_flower', type: 'hat', style: 'flower', name: 'Blume', color: '#ff8fb3', at: 60 },
+    { id: 'st_rocket', type: 'sticker', name: 'Rakete', emoji: '🚀', at: 66 },
+    { id: 'hat_pirate', type: 'hat', style: 'pirate', name: 'Piratenhut', at: 72 },
+    { id: 'st_rainbow', type: 'sticker', name: 'Regenbogen', emoji: '🌈', at: 80 },
+    { id: 'scarf_blue', type: 'scarf', style: 'plain', name: 'blauer Schal', color: '#4d8df0', at: 88 },
+    { id: 'st_unicorn', type: 'sticker', name: 'Einhorn', emoji: '🦄', at: 96 },
+    { id: 'st_trophy', type: 'sticker', name: 'Pokal', emoji: '🏆', at: 105 }
+  ],
+  byId: {},
+  checkUnlocks: function (state) {
+    var newly = [];
+    this.items.forEach(function (it) {
+      if (it.at <= state.stars && state.unlocked.indexOf(it.id) < 0) {
+        state.unlocked.push(it.id);
+        newly.push(it);
+      }
+    });
+    return newly;
+  },
+  next: function (state) {
+    for (var i = 0; i < this.items.length; i++) {
+      if (state.unlocked.indexOf(this.items[i].id) < 0) return this.items[i];
+    }
+    return null;
+  }
+};
+F.rewards.items.forEach(function (it) { F.rewards.byId[it.id] = it; });
+
+/* ==== js/fluffi.js ==== */
+/* Fluffi als Comic-SVG (nach dem Kuscheltier-Foto: lavendelgrau, weisses Herzgesicht und Bauch,
+   gelber Schnabel und Fuesse, schwarze Knopfaugen, rosa Schleife rechts oben) plus kleine Grafik-Helfer. */
+F.art = {};
+
+F.art.COL = {
+  grey: '#bcb8cc', greyDark: '#a29db6', white: '#fdfcf8', line: '#4e4a5e',
+  yellow: '#ffd23f', yellowDark: '#e8b100', cheek: '#ff9db5', eye: '#22202b'
+};
+
+/* outfit: {bow, hat, scarf, glasses}  mood: 'normal' | 'happy' | 'wow' */
+F.art.fluffi = function (outfit, mood, extraClass) {
+  outfit = outfit || {};
+  var C = F.art.COL;
+  var R = F.rewards ? F.rewards.byId : {};
+  var bow = R[outfit.bow], hat = R[outfit.hat], scarf = R[outfit.scarf], glasses = R[outfit.glasses];
+  var s = '';
+  s += '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250" class="fluffi ' + (extraClass || '') + '">';
+  // Fuesse
+  s += '<g stroke="' + C.line + '" stroke-width="3" stroke-linejoin="round">';
+  s += '<path class="f-foot" d="M58 226 q-4 -16 14 -20 q20 -2 22 14 q2 12 -18 12 q-14 0 -18 -6z" fill="' + C.yellow + '"/>';
+  s += '<path class="f-foot" d="M142 226 q4 -16 -14 -20 q-20 -2 -22 14 q-2 12 18 12 q14 0 18 -6z" fill="' + C.yellow + '"/>';
+  // Fluegel
+  s += '<path class="f-wing-l" d="M36 128 q-30 8 -28 34 q14 2 32 -12z" fill="' + C.greyDark + '"/>';
+  s += '<path class="f-wing-r" d="M164 128 q30 8 28 34 q-14 2 -32 -12z" fill="' + C.greyDark + '"/>';
+  // Koerper (Kopf und Rumpf ein Stueck wie beim Kuscheltier)
+  s += '<path d="M100 22 C 150 22 172 70 170 120 C 168 180 150 222 100 222 C 50 222 32 180 30 120 C 28 70 50 22 100 22 Z" fill="' + C.grey + '"/>';
+  // Bauch
+  s += '<path d="M100 120 C 140 120 152 150 150 180 C 148 208 128 218 100 218 C 72 218 52 208 50 180 C 48 150 60 120 100 120 Z" fill="' + C.white + '" stroke="none"/>';
+  // Gesicht (Herzform mit grauer Spitze in der Mitte)
+  s += '<path d="M100 66 C 90 40 46 40 42 80 C 38 118 70 132 100 130 C 130 132 162 118 158 80 C 154 40 110 40 100 66 Z" fill="' + C.white + '"/>';
+  s += '</g>';
+  // Augen
+  if (mood === 'happy') {
+    s += '<path d="M66 88 q10 -12 20 0" fill="none" stroke="' + C.eye + '" stroke-width="5" stroke-linecap="round"/>';
+    s += '<path d="M114 88 q10 -12 20 0" fill="none" stroke="' + C.eye + '" stroke-width="5" stroke-linecap="round"/>';
+  } else {
+    var r = mood === 'wow' ? 11 : 9.5;
+    s += '<g class="f-eyes"><circle cx="76" cy="88" r="' + r + '" fill="' + C.eye + '"/><circle cx="124" cy="88" r="' + r + '" fill="' + C.eye + '"/>';
+    s += '<circle cx="72.5" cy="84" r="3.6" fill="#fff"/><circle cx="120.5" cy="84" r="3.6" fill="#fff"/>';
+    s += '<circle cx="79" cy="92" r="1.6" fill="#fff"/><circle cx="127" cy="92" r="1.6" fill="#fff"/></g>';
+  }
+  // Baeckchen
+  s += '<ellipse cx="62" cy="106" rx="9" ry="5.5" fill="' + C.cheek + '" opacity=".55"/>';
+  s += '<ellipse cx="138" cy="106" rx="9" ry="5.5" fill="' + C.cheek + '" opacity=".55"/>';
+  // Schnabel
+  if (mood === 'wow') {
+    s += '<path d="M86 100 Q100 94 114 100 Q110 118 100 118 Q90 118 86 100 Z" fill="' + C.yellow + '" stroke="' + C.line + '" stroke-width="3" stroke-linejoin="round"/>';
+    s += '<ellipse cx="100" cy="108" rx="6" ry="4" fill="#d9534f"/>';
+  } else {
+    s += '<path d="M84 100 Q100 93 116 100 Q106 114 100 114 Q94 114 84 100 Z" fill="' + C.yellow + '" stroke="' + C.line + '" stroke-width="3" stroke-linejoin="round"/>';
+    s += '<path d="M90 101 Q100 98 110 101" fill="none" stroke="' + C.yellowDark + '" stroke-width="2" stroke-linecap="round"/>';
+  }
+  if (scarf) s += F.art.scarf(scarf);
+  if (glasses) s += F.art.glasses(glasses);
+  if (hat) s += F.art.hat(hat);
+  if (bow) s += F.art.bow(bow.color, bow.color2);
+  s += '</svg>';
+  return s;
+};
+
+F.art.bow = function (col, col2) {
+  var L = F.art.COL.line;
+  var c2 = col2 || col;
+  return '<g transform="translate(134 30) rotate(18)" stroke="' + L + '" stroke-width="3" stroke-linejoin="round">' +
+    '<path d="M0 0 C -14 -22 -38 -14 -34 2 C -32 16 -14 14 0 0 Z" fill="' + col + '"/>' +
+    '<path d="M0 0 C 14 -22 38 -14 34 2 C 32 16 14 14 0 0 Z" fill="' + c2 + '"/>' +
+    '<path d="M-22 -4 q8 2 14 2 M22 -4 q-8 2 -14 2" fill="none" stroke-width="2" opacity=".5"/>' +
+    '<ellipse cx="0" cy="0" rx="7" ry="8" fill="' + col + '"/></g>';
+};
+
+F.art.hat = function (h) {
+  var L = F.art.COL.line;
+  var g = '<g stroke="' + L + '" stroke-width="3" stroke-linejoin="round">';
+  switch (h.style) {
+    case 'wool':
+      g += '<path d="M48 52 C 52 10 148 10 152 52 Z" fill="' + h.color + '"/>';
+      g += '<rect x="42" y="44" width="116" height="18" rx="9" fill="' + (h.color2 || '#fff') + '"/>';
+      g += '<circle cx="100" cy="12" r="12" fill="' + (h.color2 || '#fff') + '"/>';
+      break;
+    case 'crown':
+      g += '<path d="M62 50 L58 14 L80 32 L100 6 L120 32 L142 14 L138 50 Z" fill="#ffcc33"/>';
+      g += '<circle cx="100" cy="36" r="5" fill="#e53950"/><circle cx="78" cy="40" r="4" fill="#3a8ee6"/><circle cx="122" cy="40" r="4" fill="#3ec46d"/>';
+      break;
+    case 'party':
+      g += '<path d="M76 46 L100 -6 L124 46 Z" fill="' + h.color + '"/>';
+      g += '<path d="M84 30 L116 30 M90 16 L110 16" stroke="#fff" stroke-width="5"/>';
+      g += '<circle cx="100" cy="-6" r="7" fill="#ffd23f"/>';
+      break;
+    case 'pirate':
+      g += '<path d="M40 50 C 50 4 150 4 160 50 C 130 40 70 40 40 50 Z" fill="#2b2b38"/>';
+      g += '<circle cx="100" cy="28" r="7" fill="#fff"/><path d="M92 38 L108 44 M108 38 L92 44" stroke="#fff" stroke-width="3"/>';
+      break;
+    case 'flower':
+      g += '<g transform="translate(66 34)">';
+      for (var i = 0; i < 5; i++) g += '<ellipse cx="0" cy="-12" rx="7" ry="11" fill="' + h.color + '" transform="rotate(' + (i * 72) + ')"/>';
+      g += '<circle r="7" fill="#ffd23f"/></g>';
+      break;
+  }
+  return g + '</g>';
+};
+
+F.art.scarf = function (sc) {
+  var L = F.art.COL.line;
+  var fill = sc.color;
+  var defs = '';
+  if (sc.style === 'rainbow') {
+    defs = '<defs><linearGradient id="rb" x1="0" x2="1"><stop offset="0" stop-color="#ff5d5d"/><stop offset=".25" stop-color="#ffb347"/><stop offset=".5" stop-color="#ffe066"/><stop offset=".75" stop-color="#6fd36f"/><stop offset="1" stop-color="#6aa8ff"/></linearGradient></defs>';
+    fill = 'url(#rb)';
+  }
+  return defs + '<g stroke="' + L + '" stroke-width="3" stroke-linejoin="round">' +
+    '<path d="M40 126 C 70 144 130 144 160 126 L 162 142 C 130 160 70 160 38 142 Z" fill="' + fill + '"/>' +
+    '<path d="M124 146 L 140 190 L 120 192 L 110 150 Z" fill="' + fill + '"/>' +
+    (sc.style === 'dots' ? '<circle cx="70" cy="142" r="3" fill="#fff" stroke="none"/><circle cx="100" cy="147" r="3" fill="#fff" stroke="none"/><circle cx="130" cy="142" r="3" fill="#fff" stroke="none"/>' : '') +
+    '</g>';
+};
+
+F.art.glasses = function (gl) {
+  var L = F.art.COL.line;
+  if (gl.style === 'heart') {
+    var heart = function (cx) {
+      return '<path d="M' + cx + ' 98 C ' + (cx - 22) + ' 84 ' + (cx - 18) + ' 68 ' + cx + ' 78 C ' + (cx + 18) + ' 68 ' + (cx + 22) + ' 84 ' + cx + ' 98 Z" fill="' + gl.color + '" opacity=".9"/>';
+    };
+    return '<g stroke="' + L + '" stroke-width="3">' + heart(76) + heart(124) + '<path d="M92 84 L108 84" fill="none"/></g>';
+  }
+  return '<g stroke="' + L + '" stroke-width="3"><rect x="56" y="76" width="38" height="24" rx="10" fill="' + gl.color + '"/>' +
+    '<rect x="106" y="76" width="38" height="24" rx="10" fill="' + gl.color + '"/><path d="M94 86 L106 86" fill="none"/>' +
+    '<path d="M62 82 l10 0" stroke="#fff" stroke-width="3" opacity=".6"/><path d="M112 82 l10 0" stroke="#fff" stroke-width="3" opacity=".6"/></g>';
+};
+
+/* Fisch (schaut nach rechts) */
+F.art.fish = function (color) {
+  var L = F.art.COL.line;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" class="fish-svg">' +
+    '<g stroke="' + L + '" stroke-width="3" stroke-linejoin="round">' +
+    '<path d="M18 30 L2 12 L4 48 Z" fill="' + color + '"/>' +
+    '<ellipse cx="52" cy="30" rx="38" ry="22" fill="' + color + '"/>' +
+    '<path d="M44 10 q10 -10 22 0" fill="' + color + '"/></g>' +
+    '<path d="M40 14 q-6 16 0 32" fill="none" stroke="#fff" stroke-width="3" opacity=".5"/>' +
+    '<circle cx="74" cy="25" r="6" fill="#fff" stroke="' + L + '" stroke-width="2"/><circle cx="76" cy="25" r="3" fill="#222"/>' +
+    '<path d="M84 36 q4 2 6 0" fill="none" stroke="' + L + '" stroke-width="2" stroke-linecap="round"/></svg>';
+};
+
+/* Formen fuer Muster-Kette */
+F.art.SHAPES = {
+  circle: '<circle cx="50" cy="50" r="38"/>',
+  square: '<rect x="14" y="14" width="72" height="72" rx="8"/>',
+  triangle: '<path d="M50 10 L90 86 L10 86 Z"/>',
+  heart: '<path d="M50 88 C 6 60 8 22 30 16 C 42 12 50 22 50 30 C 50 22 58 12 70 16 C 92 22 94 60 50 88 Z"/>',
+  star: '<path d="M50 6 L61 37 L94 38 L68 58 L77 90 L50 71 L23 90 L32 58 L6 38 L39 37 Z"/>'
+};
+F.art.shape = function (shape, color, size) {
+  var k = size === 'small' ? 0.62 : 1;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="shape-svg">' +
+    '<g transform="translate(50 50) scale(' + k + ') translate(-50 -50)" fill="' + color + '" stroke="' + F.art.COL.line + '" stroke-width="5" stroke-linejoin="round">' +
+    F.art.SHAPES[shape] + '</g></svg>';
+};
+
+/* Wuerfelpunkte 1..10 als SVG */
+F.art.dots = function (n, color) {
+  var pos = {
+    1: [[50, 50]], 2: [[30, 30], [70, 70]], 3: [[25, 25], [50, 50], [75, 75]],
+    4: [[30, 30], [70, 30], [30, 70], [70, 70]], 5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+    6: [[30, 22], [70, 22], [30, 50], [70, 50], [30, 78], [70, 78]],
+    7: [[30, 22], [70, 22], [30, 50], [50, 50], [70, 50], [30, 78], [70, 78]],
+    8: [[30, 18], [70, 18], [30, 41], [70, 41], [30, 64], [70, 64], [30, 87], [70, 87]],
+    9: [[22, 22], [50, 22], [78, 22], [22, 50], [50, 50], [78, 50], [22, 78], [50, 78], [78, 78]],
+    10: [[20, 25], [35, 25], [50, 25], [65, 25], [80, 25], [20, 70], [35, 70], [50, 70], [65, 70], [80, 70]]
+  }[n] || [];
+  var r = n > 6 ? 7 : 10;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="dots-svg">' +
+    pos.map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + r + '" fill="' + (color || '#2a3f7a') + '"/>'; }).join('') + '</svg>';
+};
+
+/* SVG -> Image fuer Canvas-Spiele */
+F.art.toImage = function (svg) {
+  var img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  return img;
+};
+
+/* ==== js/ui.js ==== */
+/* Bildschirme: Start, Karte, Spielrahmen, Ergebnis, Kleiderschrank, Album, Elternbereich */
+F.ui = {};
+
+F.el = function (tag, cls, html) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+};
+
+/* Tippen: pointerup statt click (schneller auf Tablets), mit Ton */
+F.onTap = function (el, fn, silent) {
+  el.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    if (!silent) F.sound.play('tap');
+    fn(ev);
+  });
+  return el;
+};
+
+F.show = function (builder) {
+  if (F.current && F.current.destroy) { try { F.current.destroy(); } catch (e) { console.error(e); } }
+  F.speech.stop();
+  F.app.innerHTML = '';
+  var scr = F.el('div', 'screen');
+  F.app.appendChild(scr);
+  var token = {};
+  F.currentToken = token;
+  F.current = builder(scr, token) || {};
+};
+
+/* Sprechblase (fuer Eltern lesbar, Kind hoert die Sprache) */
+F.ui.bubble = function (text) {
+  var b = document.getElementById('bubble');
+  if (!b) return;
+  b.textContent = text;
+  b.classList.add('show');
+  clearTimeout(F.ui._bubbleT);
+  F.ui._bubbleT = setTimeout(function () { b.classList.remove('show'); }, 1800 + text.length * 60);
+};
+
+F.ui.starRow = function (n, max) {
+  var s = '';
+  for (var i = 0; i < (max || 3); i++) s += '<span class="mini-star ' + (i < n ? 'on' : '') + '">★</span>';
+  return s;
+};
+
+/* ---------- Start ---------- */
+F.ui.start = function () {
+  F.show(function (scr) {
+    scr.classList.add('start-screen');
+    scr.innerHTML =
+      '<div class="snow"></div>' +
+      '<h1 class="title">Fluffis Abenteuer</h1>' +
+      '<div class="start-fluffi bounce">' + F.art.fluffi(F.state.outfit, 'normal') + '</div>' +
+      '<button class="big-play" aria-label="Spielen">▶</button>';
+    F.ui.snow(scr.querySelector('.snow'), 24);
+    var go = function () {
+      F.sound.ensure();
+      F.sound.play('pop');
+      var de = document.documentElement;
+      var rfs = de.requestFullscreen || de.webkitRequestFullscreen;
+      if (rfs) { try { var p = rfs.call(de); if (p && p.catch) p.catch(function () { }); } catch (e) { } }
+      if (!F.state.askedName) F.ui.askName(); else F.ui.hub(true);
+    };
+    F.onTap(scr.querySelector('.big-play'), go, true);
+    F.onTap(scr.querySelector('.start-fluffi'), go, true);
+  });
+};
+
+F.ui.snow = function (el, n) {
+  var h = '';
+  for (var i = 0; i < n; i++) {
+    h += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:-' + (Math.random() * 10).toFixed(1) +
+      's;animation-duration:' + (7 + Math.random() * 6).toFixed(1) + 's;font-size:' + (10 + Math.random() * 16).toFixed(0) + 'px">❄</i>';
+  }
+  el.innerHTML = h;
+};
+
+/* ---------- Karte ---------- */
+F.ui.STATION_POS = [[24, 66], [42, 36], [58, 70], [74, 34], [88, 66]];
+
+F.ui.hub = function (greet) {
+  F.show(function (scr, token) {
+    scr.classList.add('hub-screen');
+    var st = F.state;
+    var html = '<div class="snow"></div>' +
+      '<svg class="hub-island" viewBox="0 0 100 60" preserveAspectRatio="none"><path d="M0 26 C 15 18 30 24 45 20 C 62 15 80 22 100 17 L100 60 L0 60 Z" fill="#eef7ff"/><path d="M0 34 C 20 28 40 34 60 29 C 75 26 88 30 100 27 L100 60 L0 60 Z" fill="#dcefff"/></svg>' +
+      '<div class="topbar">' +
+      '<div class="star-count"><span class="big-star">★</span><span class="num">' + st.stars + '</span></div>' +
+      '<div class="next-gift"></div>' +
+      '<div class="top-btns"><button class="round-btn wardrobe-btn" aria-label="Kleiderschrank">🎀</button>' +
+      '<button class="round-btn album-btn" aria-label="Sticker-Album">📒</button>' +
+      '<button class="round-btn parent-btn" aria-label="Eltern">⚙<svg class="hold-ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/></svg></button></div>' +
+      '</div>' +
+      '<svg class="hub-path" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="' + F.ui.pathD() + '"/></svg>' +
+      '<div class="hub-fluffi">' + F.art.fluffi(st.outfit, 'normal', 'wave') + '</div>';
+    scr.innerHTML = html;
+    F.ui.snow(scr.querySelector('.snow'), 14);
+
+    // Naechstes Geschenk: Fortschrittsbalken
+    var nx = F.rewards.next(st);
+    var ng = scr.querySelector('.next-gift');
+    if (nx) {
+      var prev = 0;
+      F.rewards.items.forEach(function (it) { if (it.at <= st.stars && it.at > prev) prev = it.at; });
+      var pct = Math.max(4, Math.min(100, ((st.stars - prev) / Math.max(1, nx.at - prev)) * 100));
+      ng.innerHTML = '<div class="gift-bar"><div style="width:' + pct + '%"></div></div><span class="gift-ico">🎁</span>';
+    }
+
+    F.gameOrder.forEach(function (id, i) {
+      var g = F.games[id];
+      var pos = F.ui.STATION_POS[i] || [50, 50];
+      var open = F.isGameUnlocked(st, id);
+      var b = F.el('button', 'station ' + (open ? 'open' : 'locked'));
+      b.style.left = pos[0] + '%';
+      b.style.top = pos[1] + '%';
+      b.style.setProperty('--c', g.color);
+      var lvl = st.levels[id] || 1;
+      b.innerHTML = '<span class="st-icon">' + g.icon + '</span>' +
+        (open ? '<span class="st-level">' + F.ui.levelPips(lvl) + '</span>'
+          : '<span class="st-lock">🔒</span><span class="st-need">★ ' + g.unlockAt + '</span>');
+      b.setAttribute('aria-label', g.title);
+      F.onTap(b, function () {
+        if (open) { F.speech.stop(); F.ui.runGame(id); }
+        else {
+          F.sound.play('wrong');
+          F.speech.say('Hier brauchst du ' + F.numWord(g.unlockAt) + ' Sterne. Du hast schon ' + F.numWord(st.stars) + '.');
+          b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+        }
+      }, true);
+      scr.appendChild(b);
+    });
+
+    var fl = scr.querySelector('.hub-fluffi');
+    F.onTap(fl, function () {
+      F.sound.play('pop');
+      fl.classList.remove('hop'); void fl.offsetWidth; fl.classList.add('hop');
+      F.speech.say(F.rng.pick(['Hallo' + F.nameComma() + '! Wohin gehen wir heute?', 'Ich bin so froh, dass du mit mir spielst' + F.nameComma() + '!', 'Tippe auf ein Bild, dann spielen wir!', 'Ich liebe Fische!', 'Schau mal, meine Schleife!', 'Sammle Sterne, dann gibt es Geschenke!']));
+    }, true);
+    F.onTap(scr.querySelector('.wardrobe-btn'), function () { F.ui.wardrobe(); });
+    F.onTap(scr.querySelector('.album-btn'), function () { F.ui.album(); });
+    F.ui.holdButton(scr.querySelector('.parent-btn'), 2000, function () { F.ui.parents(); });
+
+    if (greet) {
+      setTimeout(function () {
+        if (F.currentToken !== token) return;
+        F.speech.say(st.plays && Object.keys(st.plays).length
+          ? 'Hallo' + F.nameComma() + ', da bist du ja wieder! Tippe auf ein Bild.'
+          : 'Hallo' + F.nameComma() + '! Ich bin Fluffi, das kleine Pinguinmädchen. Tippe auf ein Bild, dann spielen wir zusammen!');
+      }, 400);
+    }
+  });
+};
+
+F.ui.pathD = function () {
+  var p = F.ui.STATION_POS.slice(0, F.gameOrder.length);
+  var d = 'M 8 72';
+  p.forEach(function (q) { d += ' L ' + q[0] + ' ' + q[1]; });
+  return d;
+};
+
+F.ui.levelPips = function (lvl) {
+  var s = '';
+  for (var i = 1; i <= F.MAX_LEVEL; i++) s += '<i class="' + (i <= lvl ? 'on' : '') + '"></i>';
+  return s;
+};
+
+/* Knopf, der gedrueckt gehalten werden muss (Elternbereich) */
+F.ui.holdButton = function (btn, ms, fn) {
+  var t = null;
+  var start = function (e) {
+    e.preventDefault();
+    btn.classList.add('holding');
+    t = setTimeout(function () { btn.classList.remove('holding'); t = null; fn(); }, ms);
+  };
+  var stop = function () { btn.classList.remove('holding'); if (t) { clearTimeout(t); t = null; } };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+  btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+};
+
+/* ---------- Spielrahmen ---------- */
+F.ui.runGame = function (id) {
+  var g = F.games[id];
+  var level = F.state.levels[id] || 1;
+  F.show(function (scr, token) {
+    scr.classList.add('game-screen', 'g-' + id);
+    scr.style.setProperty('--c', g.color);
+    scr.innerHTML = '<div class="game-head">' +
+      '<button class="round-btn home-btn" aria-label="Zur Karte">🏠</button>' +
+      '<div class="progress"></div>' +
+      '<button class="round-btn speak-btn" aria-label="Nochmal hören">🔊</button></div>' +
+      '<div class="stage"></div>';
+    var stage = scr.querySelector('.stage');
+    var progEl = scr.querySelector('.progress');
+    var mistakes = 0;
+    var finished = false;
+    var ctx = {
+      level: level,
+      rng: F.makeRng((Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0),
+      stage: stage,
+      alive: function () { return !finished && F.currentToken === token; },
+      say: function (t, o) { return ctx.alive() ? F.speech.say(t, o) : Promise.resolve(); },
+      sound: function (n) { if (ctx.alive()) F.sound.play(n); },
+      mistake: function () { mistakes++; },
+      mistakes: function () { return mistakes; },
+      progress: function (done, total) {
+        var h = '';
+        for (var i = 0; i < total; i++) h += '<i class="' + (i < done ? 'done' : (i === done ? 'now' : '')) + '"></i>';
+        progEl.innerHTML = h;
+      },
+      progressBar: function (frac) {
+        progEl.innerHTML = '<div class="pbar"><div style="width:' + Math.round(Math.min(1, frac) * 100) + '%"></div><span class="pbar-goal">🏁</span></div>';
+      },
+      finish: function (opts) {
+        if (finished) return;
+        finished = true;
+        opts = opts || {};
+        var stars = opts.stars || F.starsFor(mistakes, opts.tasks || 5);
+        F.sound.play('win');
+        setTimeout(function () { if (F.currentToken === token) F.ui.result(id, stars); }, 900);
+      }
+    };
+    F.onTap(scr.querySelector('.home-btn'), function () { F.ui.hub(false); });
+    F.onTap(scr.querySelector('.speak-btn'), function () { F.speech.repeat(); });
+    var inst = null;
+    try { inst = g.create(stage, ctx); } catch (e) { console.error(e); }
+    return { destroy: function () { finished = true; if (inst && inst.destroy) inst.destroy(); } };
+  });
+};
+
+/* Gemeinsamer Helfer: Antwortknopf wackeln lassen */
+F.ui.shake = function (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); };
+F.ui.pulse = function (el) { el.classList.add('hint'); };
+
+/* ---------- Ergebnis ---------- */
+F.ui.result = function (id, stars) {
+  var before = F.state.stars;
+  var res = F.applyResult(F.state, id, stars);
+  F.store.save(F.state);
+  var newGames = F.gameOrder.filter(function (gid) {
+    var u = F.games[gid].unlockAt || 0;
+    return u > before && u <= F.state.stars;
+  });
+  F.show(function (scr, token) {
+    scr.classList.add('result-screen');
+    scr.innerHTML = '<div class="confetti"></div>' +
+      '<div class="res-fluffi jump">' + F.art.fluffi(F.state.outfit, 'happy') + '</div>' +
+      '<div class="res-stars"><span>★</span><span>★</span><span>★</span></div>' +
+      '<div class="res-level"></div>' +
+      '<div class="res-btns"><button class="round-btn big again" aria-label="Nochmal">↻</button>' +
+      '<button class="round-btn big map" aria-label="Karte">🗺️</button></div>';
+    F.ui.confetti(scr.querySelector('.confetti'));
+    var spans = scr.querySelectorAll('.res-stars span');
+    var alive = function () { return F.currentToken === token; };
+    for (var i = 0; i < stars; i++) {
+      (function (k) { setTimeout(function () { if (!alive()) return; spans[k].classList.add('on'); F.sound.play('star'); }, 350 + k * 450); })(i);
+    }
+    var lv = scr.querySelector('.res-level');
+    if (res.change > 0) lv.innerHTML = '<span class="lvl-up">⬆</span> ' + F.ui.levelPips(res.level);
+    else lv.innerHTML = F.ui.levelPips(res.level);
+
+    F.onTap(scr.querySelector('.again'), function () { F.ui.runGame(id); });
+    F.onTap(scr.querySelector('.map'), function () { F.ui.hub(false); });
+
+    (async function () {
+      await F.wait(400 + stars * 450);
+      if (!alive()) return;
+      var txt = stars === 3 ? 'Wow' + F.nameComma() + '! Drei Sterne! Du bist super!' : stars === 2 ? 'Toll' + F.nameComma() + '! Zwei Sterne!' : 'Gut gemacht' + F.nameComma() + '! Ein Stern!';
+      if (res.change > 0) txt += ' Du wirst immer besser. Jetzt wird es ein bisschen schwerer.';
+      await F.speech.say(txt);
+      for (var r = 0; r < res.newRewards.length; r++) {
+        if (!alive()) return;
+        await F.ui.giftPopup(scr, res.newRewards[r]);
+      }
+      if (newGames.length && alive()) {
+        await F.speech.say('Juhu! Auf der Karte ist ein neues Spiel offen!');
+      }
+    })();
+  });
+};
+
+F.ui.confetti = function (el) {
+  var cols = ['#ff8fb3', '#5aa9ff', '#ffd23f', '#5fd6b4', '#b98cff'];
+  var h = '';
+  for (var i = 0; i < 40; i++) {
+    h += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;background:' + cols[i % cols.length] +
+      ';animation-delay:' + (Math.random() * 1.5).toFixed(2) + 's;animation-duration:' + (2.5 + Math.random() * 2).toFixed(2) + 's"></i>';
+  }
+  el.innerHTML = h;
+};
+
+/* Geschenk antippen -> oeffnet sich, Outfit wird gleich angezogen */
+F.ui.giftPopup = function (scr, item) {
+  return new Promise(function (resolve) {
+    var ov = F.el('div', 'overlay gift-overlay');
+    ov.innerHTML = '<div class="gift-box wobble">🎁</div>';
+    scr.appendChild(ov);
+    F.sound.play('gift');
+    F.speech.say('Ein Geschenk für dich! Tippe darauf!');
+    var opened = false;
+    F.onTap(ov, function () {
+      if (!opened) {
+        opened = true;
+        F.sound.play('win');
+        var inner;
+        if (item.type === 'sticker') {
+          inner = '<div class="gift-sticker pop-in">' + item.emoji + '</div>';
+        } else {
+          F.state.outfit[item.type] = item.id;
+          F.store.save(F.state);
+          inner = '<div class="gift-fluffi pop-in">' + F.art.fluffi(F.state.outfit, 'wow') + '</div>';
+        }
+        ov.innerHTML = inner + '<div class="tap-on">👆</div>';
+        var phrase = item.type === 'sticker' ? 'Ein neuer Sticker: ' + item.name + '! Er klebt jetzt in deinem Album.'
+          : 'Du hast ' + F.ui.article(item) + ' ' + item.name + ' bekommen! Fluffi hat ' + ({ eine: 'sie', einen: 'ihn', ein: 'es' })[F.ui.article(item)] + ' gleich angezogen.';
+        F.speech.say(phrase);
+        // Auf der Ergebnisseite Fluffi aktualisieren
+        var rf = scr.querySelector('.res-fluffi');
+        if (rf) rf.innerHTML = F.art.fluffi(F.state.outfit, 'happy');
+      } else {
+        ov.remove();
+        resolve();
+      }
+    }, true);
+  });
+};
+
+F.ui.article = function (item) {
+  var fem = { bow: 1, glasses: 1 };
+  if (item.type === 'hat') return /Mütze|Krone|Blume/.test(item.name) ? 'eine' : 'einen';
+  if (item.type === 'scarf') return 'einen';
+  return fem[item.type] ? 'eine' : 'ein';
+};
+
+/* ---------- Kleiderschrank ---------- */
+F.ui.WARDROBE_CATS = [['bow', '🎀'], ['hat', '🎩'], ['scarf', '🧣'], ['glasses', '🕶️']];
+
+F.ui.wardrobe = function () {
+  F.show(function (scr) {
+    scr.classList.add('wardrobe-screen');
+    scr.innerHTML = '<div class="game-head"><button class="round-btn home-btn" aria-label="Zur Karte">🗺️</button><div class="head-title">🎀</div><div></div></div>' +
+      '<div class="wr-body"><div class="wr-preview"></div><div class="wr-cats"></div></div>';
+    var prev = scr.querySelector('.wr-preview');
+    var cats = scr.querySelector('.wr-cats');
+    var render = function () {
+      prev.innerHTML = F.art.fluffi(F.state.outfit, 'happy');
+      cats.innerHTML = '';
+      F.ui.WARDROBE_CATS.forEach(function (c) {
+        var row = F.el('div', 'wr-row');
+        row.appendChild(F.el('div', 'wr-cat-ico', c[1]));
+        F.rewards.items.filter(function (it) { return it.type === c[0]; }).forEach(function (it) {
+          var have = F.state.unlocked.indexOf(it.id) >= 0;
+          var on = F.state.outfit[c[0]] === it.id;
+          var tile = F.el('button', 'wr-item' + (have ? '' : ' locked') + (on ? ' on' : ''));
+          var o = {}; o[c[0]] = it.id;
+          tile.innerHTML = have ? F.art.fluffi(o, 'normal') : '<span class="st-lock">🔒</span><span class="st-need">★ ' + it.at + '</span>';
+          F.onTap(tile, function () {
+            if (!have) { F.speech.say('Das bekommst du bei ' + F.numWord(it.at) + ' Sternen.'); return; }
+            F.state.outfit[c[0]] = on ? null : it.id;
+            F.store.save(F.state);
+            if (!on) F.speech.say(it.name);
+            render();
+          });
+          row.appendChild(tile);
+        });
+        cats.appendChild(row);
+      });
+    };
+    render();
+    F.onTap(scr.querySelector('.home-btn'), function () { F.ui.hub(false); });
+    F.speech.say('Hier kannst du Fluffi anziehen. Tippe auf ein Teil!');
+  });
+};
+
+/* ---------- Sticker-Album ---------- */
+F.ui.album = function () {
+  F.show(function (scr) {
+    scr.classList.add('album-screen');
+    scr.innerHTML = '<div class="game-head"><button class="round-btn home-btn" aria-label="Zur Karte">🗺️</button><div class="head-title">📒</div><div></div></div><div class="album-grid"></div>';
+    var grid = scr.querySelector('.album-grid');
+    F.rewards.items.filter(function (it) { return it.type === 'sticker'; }).forEach(function (it) {
+      var have = F.state.unlocked.indexOf(it.id) >= 0;
+      var t = F.el('button', 'sticker' + (have ? '' : ' locked'));
+      t.innerHTML = have ? '<span class="st-emoji">' + it.emoji + '</span>' : '<span class="st-q">?</span><span class="st-need">★ ' + it.at + '</span>';
+      F.onTap(t, function () {
+        if (have) { F.speech.say(it.name); F.ui.shake(t); }
+        else F.speech.say('Diesen Sticker gibt es später. Sammle weiter Sterne!');
+      });
+      grid.appendChild(t);
+    });
+    F.onTap(scr.querySelector('.home-btn'), function () { F.ui.hub(false); });
+    F.speech.say('Dein Sticker-Album. Tippe auf einen Sticker!');
+  });
+};
+
+/* ---------- Elternbereich ---------- */
+F.ui.parents = function () {
+  F.show(function (scr) {
+    scr.classList.add('parents-screen');
+    var st = F.state;
+    var voice = F.speech.supported ? (F.speech.voice ? F.speech.voice.name + ' (' + F.speech.voice.lang + ')' : 'keine deutsche Stimme gefunden, Standardstimme') : 'nicht verfügbar';
+    var rows = F.gameOrder.map(function (id) {
+      var g = F.games[id];
+      return '<tr><td>' + g.icon + ' ' + g.title + '</td><td>' + g.skill + '</td><td>' + (st.levels[id] || 1) + ' / ' + F.MAX_LEVEL + '</td><td>' + (st.plays[id] || 0) + '</td></tr>';
+    }).join('');
+    scr.innerHTML = '<div class="parents-box">' +
+      '<h2>Elternbereich</h2>' +
+      '<p>Sterne gesamt: <b>' + st.stars + '</b> · Version ' + F.VERSION + '</p>' +
+      '<label class="tgl">Name des Kindes: <input type="text" id="opt-name" maxlength="20" autocomplete="off" placeholder="z. B. Lena"></label>' +
+      '<label class="tgl"><input type="checkbox" id="opt-speech"' + (st.settings.speech ? ' checked' : '') + '> Sprachausgabe</label>' +
+      '<label class="tgl"><input type="checkbox" id="opt-sound"' + (st.settings.sound ? ' checked' : '') + '> Töne</label>' +
+      '<p class="small">Stimme: ' + voice + ' <button id="test-voice">Testen</button></p>' +
+      '<table><tr><th>Spiel</th><th>Lernbereich</th><th>Stufe</th><th>Runden</th></tr>' + rows + '</table>' +
+      '<p class="small">Die Stufe passt sich automatisch an. Alle Daten bleiben nur auf diesem Gerät (localStorage), es gibt kein Konto, kein Tracking und keine Werbung. Empfehlung: kurze Spielzeiten von 15–20 Minuten.</p>' +
+      '<div class="p-btns"><button id="p-reset" class="danger">Fortschritt löschen</button>' +
+      '<button id="p-back">Zurück zum Spiel</button></div></div>';
+    var nameIn = scr.querySelector('#opt-name');
+    nameIn.value = st.childName || '';
+    nameIn.addEventListener('change', function () { st.childName = F.cleanName(nameIn.value); st.askedName = true; nameIn.value = st.childName; F.store.save(st); });
+    scr.querySelector('#opt-speech').addEventListener('change', function (e) { st.settings.speech = e.target.checked; F.store.save(st); });
+    scr.querySelector('#opt-sound').addEventListener('change', function (e) { st.settings.sound = e.target.checked; F.store.save(st); });
+    scr.querySelector('#test-voice').addEventListener('click', function () { F.speech.say('Hallo, ich bin Fluffi. Eins, zwei, drei!'); });
+    scr.querySelector('#p-reset').addEventListener('click', function () {
+      if (window.confirm('Wirklich den gesamten Fortschritt (Sterne, Stufen, Geschenke) löschen?')) {
+        F.store.reset();
+        F.state = F.defaultState();
+        F.ui.hub(false);
+      }
+    });
+    scr.querySelector('#p-back').addEventListener('click', function () { F.ui.hub(false); });
+  });
+};
+
+/* ---------- Namensabfrage (einmalig, Eltern tippen ein) ---------- */
+F.ui.askName = function () {
+  F.show(function (scr) {
+    scr.classList.add('name-screen');
+    scr.innerHTML = '<div class="snow"></div>' +
+      '<div class="name-fluffi bounce">' + F.art.fluffi(F.state.outfit, 'wow', 'wave') + '</div>' +
+      '<div class="name-box"><div class="name-q">👋 ❓</div>' +
+      '<input type="text" class="name-input" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Vorname">' +
+      '<div class="name-btns"><button class="round-btn big name-ok" aria-label="Fertig">✔️</button>' +
+      '<button class="round-btn name-skip" aria-label="Ohne Namen weiter">⏭️</button></div>' +
+      '<p class="name-hint">Für Eltern: Vorname eintippen, dann spricht Fluffi das Kind mit Namen an. Bleibt nur auf diesem Gerät. Änderbar im Elternbereich (⚙ 2 s halten).</p></div>';
+    F.ui.snow(scr.querySelector('.snow'), 14);
+    var inp = scr.querySelector('.name-input');
+    var done = function (save) {
+      F.state.askedName = true;
+      if (save) F.state.childName = F.cleanName(inp.value);
+      F.store.save(F.state);
+      if (F.state.childName) {
+        F.sound.play('good');
+        F.speech.say('Hallo, ' + F.state.childName + '! Schön, dass du da bist!').then(function () { F.ui.hub(true); });
+        setTimeout(function () { if (document.querySelector('.name-screen')) F.ui.hub(true); }, 4500);
+      } else F.ui.hub(true);
+    };
+    F.onTap(scr.querySelector('.name-ok'), function () { done(true); });
+    F.onTap(scr.querySelector('.name-skip'), function () { done(false); });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { inp.blur(); done(true); } });
+    F.speech.say('Hallo! Ich bin Fluffi. Wie heißt du? Mama oder Papa können deinen Namen hier eintippen.');
+  });
+};
+
+/* ==== js/games/fische.js ==== */
+/* Station 1: Fische fangen – Zaehlen, Menge <-> Ziffer, mehr/weniger, +1/-1 */
+(function () {
+  var LEVELS = {
+    1: { max: 3, types: ['catch'], dots: true },
+    2: { max: 5, types: ['catch', 'catch', 'count'], dots: true },
+    3: { max: 6, types: ['catch', 'count', 'more'], dots: true },
+    4: { max: 8, types: ['catch', 'count', 'more'], dots: false },
+    5: { max: 10, types: ['count', 'more', 'plus', 'catch'], dots: false },
+    6: { max: 10, types: ['plus', 'minus', 'more', 'count'], dots: false }
+  };
+  var FISH_COLORS = ['#ff9f43', '#54a0ff', '#ff6b9a', '#1dd1a1', '#feca57', '#a78bfa'];
+  var TASKS = 5;
+
+  /* Reiner Generator: Aufgabe fuer eine Stufe */
+  F.gen.fischeTask = function (rng, level) {
+    var L = LEVELS[level] || LEVELS[1];
+    var type = rng.pick(L.types);
+    var t = { type: type, dots: L.dots, max: L.max };
+    if (type === 'catch') {
+      t.n = rng.int(1, L.max);
+    } else if (type === 'count') {
+      t.n = rng.int(1, L.max);
+      t.answer = t.n;
+      t.options = F.gen.numberOptions(rng, t.n, 1, L.max, 3);
+    } else if (type === 'more') {
+      t.a = rng.int(1, L.max);
+      do { t.b = rng.int(1, L.max); } while (t.b === t.a || (level <= 3 && Math.abs(t.b - t.a) < 2 && L.max > 3));
+      t.answer = t.a > t.b ? 0 : 1;
+    } else if (type === 'plus') {
+      t.n = rng.int(1, L.max - 1);
+      t.answer = t.n + 1;
+      t.options = F.gen.numberOptions(rng, t.answer, 1, L.max, 3);
+    } else if (type === 'minus') {
+      t.n = rng.int(2, L.max);
+      t.answer = t.n - 1;
+      t.options = F.gen.numberOptions(rng, t.answer, 1, L.max, 3);
+    }
+    return t;
+  };
+  F.gen.fischeLevels = LEVELS;
+
+  function create(stage, ctx) {
+    var rng = ctx.rng;
+    var raf = 0, alive = true;
+    var swimmers = [];
+    stage.innerHTML = '<div class="sea"><div class="waves"></div><div class="water"></div></div><div class="shore"></div>';
+    var water = stage.querySelector('.water');
+    var shore = stage.querySelector('.shore');
+    var taskNo = 0;
+
+    function fishEl(color) {
+      var d = F.el('div', 'swim-fish', F.art.fish(color));
+      return d;
+    }
+
+    function bucketHtml(label) {
+      return '<div class="bucket"><div class="bucket-fish"></div>' + (label || '') + '</div>';
+    }
+
+    function sizeClass(bucketFish, n, two) {
+      bucketFish.classList.toggle('many', n > (two ? 4 : 6));
+      bucketFish.classList.toggle('lots', n > (two ? 6 : 8));
+    }
+
+    function addFishTo(bucketFish, n, two) {
+      sizeClass(bucketFish, bucketFish.children.length + n + 1, two);
+      for (var i = 0; i < n; i++) bucketFish.appendChild(F.el('div', 'b-fish', F.art.fish(rng.pick(FISH_COLORS))));
+    }
+
+    /* Schwimmende Fische (rAF) */
+    function startSwim(count, onTap) {
+      stopSwim();
+      var W = water.clientWidth, H = water.clientHeight;
+      for (var i = 0; i < count; i++) spawn(i, count);
+      function spawn(i, total) {
+        var el = fishEl(rng.pick(FISH_COLORS));
+        var dir = rng.chance(0.5) ? 1 : -1;
+        var s = {
+          el: el, dir: dir,
+          x: rng.int(0, Math.max(1, W - 90)),
+          y: ((i + 0.5) / total) * (H - 70) + rng.int(-8, 8),
+          v: (40 + rng.int(0, 40) + ctx.level * 6) * dir,
+          ph: rng.next() * 6, caught: false
+        };
+        el.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          if (s.caught || !alive) return;
+          onTap(s);
+        });
+        water.appendChild(el);
+        swimmers.push(s);
+      }
+      var last = performance.now();
+      function step(now) {
+        if (!alive) return;
+        var dt = Math.min(0.05, (now - last) / 1000); last = now;
+        W = water.clientWidth; H = water.clientHeight;
+        swimmers.forEach(function (s) {
+          if (s.caught) return;
+          s.x += s.v * dt; s.ph += dt * 3;
+          if (s.x < -10) { s.x = -10; s.v = Math.abs(s.v); }
+          if (s.x > W - 80) { s.x = W - 80; s.v = -Math.abs(s.v); }
+          var yy = s.y + Math.sin(s.ph) * 6;
+          s.el.style.transform = 'translate(' + s.x + 'px,' + yy + 'px) scaleX(' + (s.v > 0 ? 1 : -1) + ')';
+        });
+        raf = requestAnimationFrame(step);
+      }
+      raf = requestAnimationFrame(step);
+    }
+    function stopSwim() {
+      cancelAnimationFrame(raf);
+      swimmers.forEach(function (s) { s.el.remove(); });
+      swimmers = [];
+    }
+
+    /* Fisch springt sichtbar in den Eimer */
+    function flyTo(s, target, cb) {
+      s.caught = true;
+      var r1 = s.el.getBoundingClientRect(), r2 = target.getBoundingClientRect();
+      var fly = F.el('div', 'fly-fish', s.el.innerHTML);
+      fly.style.left = r1.left + 'px'; fly.style.top = r1.top + 'px';
+      document.body.appendChild(fly);
+      s.el.style.visibility = 'hidden';
+      requestAnimationFrame(function () {
+        fly.style.transform = 'translate(' + (r2.left + r2.width / 2 - r1.left - 40) + 'px,' + (r2.top + 10 - r1.top) + 'px) scale(.6) rotate(' + (s.v > 0 ? 200 : -200) + 'deg)';
+        fly.style.opacity = '0.2';
+      });
+      setTimeout(function () { fly.remove(); cb(); }, 520);
+    }
+
+    function numberCard(n, withDots) {
+      return '<span class="num">' + n + '</span>' + (withDots ? '<span class="num-dots">' + F.art.dots(n) + '</span>' : '');
+    }
+
+    /* Antwortkarten mit sanfter Fehlerbehandlung */
+    function askOptions(container, options, answer, withDots) {
+      return new Promise(function (resolve) {
+        var wrong = 0;
+        var row = F.el('div', 'answers');
+        options.forEach(function (v) {
+          var b = F.el('button', 'answer-card', numberCard(v, withDots));
+          b.dataset.v = v;
+          F.onTap(b, function () {
+            if (!ctx.alive() || row.classList.contains('done')) return;
+            if (v === answer) {
+              row.classList.add('done'); b.classList.add('correct');
+              ctx.sound('good');
+              ctx.say(F.pickPraise(rng) + ' ' + F.numWord(answer) + '!');
+              setTimeout(resolve, 1200);
+            } else {
+              wrong++; ctx.mistake(); ctx.sound('wrong'); F.ui.shake(b);
+              ctx.say(F.pickRetry(rng));
+              if (wrong >= 2) row.querySelectorAll('.answer-card').forEach(function (c) { if (+c.dataset.v === answer) F.ui.pulse(c); });
+            }
+          }, true);
+          row.appendChild(b);
+        });
+        container.appendChild(row);
+      });
+    }
+
+    async function doCatch(t) {
+      shore.innerHTML = bucketHtml('<div class="target">' + (t.dots ? F.art.dots(t.n) : '') + '<span class="num">' + t.n + '</span></div>');
+      var bucket = shore.querySelector('.bucket');
+      var bf = shore.querySelector('.bucket-fish');
+      // Platzhalter zeigen, wie viele noch fehlen
+      sizeClass(bf, t.n);
+      for (var i = 0; i < t.n; i++) bf.appendChild(F.el('div', 'b-slot'));
+      var got = 0;
+      ctx.say('Fange ' + F.countPhrase(t.n, 'Fisch', 'Fische') + '!');
+      await new Promise(function (resolve) {
+        startSwim(Math.min(t.n + 3, 9), function (s) {
+          if (got >= t.n) return;
+          ctx.sound('pop');
+          flyTo(s, bucket, function () {
+            if (!alive) return;
+            var slot = bf.querySelector('.b-slot');
+            if (slot) slot.replaceWith(F.el('div', 'b-fish pop-in', F.art.fish(rng.pick(FISH_COLORS))));
+            got++;
+            ctx.say(F.numWord(got), { noRepeat: true, silentWait: false });
+            if (got >= t.n) { setTimeout(resolve, 700); }
+          });
+        });
+      });
+      stopSwim();
+      ctx.sound('good');
+      await ctx.say(F.pickPraise(rng) + ' Das sind ' + F.countPhrase(t.n, 'Fisch', 'Fische', 'ein') + '.');
+    }
+
+    async function doCount(t) {
+      shore.innerHTML = bucketHtml();
+      addFishTo(shore.querySelector('.bucket-fish'), t.n);
+      ctx.say('Wie viele Fische sind im Eimer?');
+      await askOptions(water, t.options, t.answer, t.dots);
+    }
+
+    async function doMore(t) {
+      shore.innerHTML = '<div class="two-buckets">' + bucketHtml() + bucketHtml() + '</div>';
+      var bs = shore.querySelectorAll('.bucket');
+      addFishTo(bs[0].querySelector('.bucket-fish'), t.a, true);
+      addFishTo(bs[1].querySelector('.bucket-fish'), t.b, true);
+      water.appendChild(F.el('div', 'big-hint', '👇'));
+      ctx.say('In welchem Eimer sind mehr Fische? Tippe auf den Eimer!');
+      await new Promise(function (resolve) {
+        var wrong = 0, done = false;
+        bs.forEach(function (b, idx) {
+          b.classList.add('tappable');
+          F.onTap(b, function () {
+            if (done || !ctx.alive()) return;
+            if (idx === t.answer) {
+              done = true; b.classList.add('correct'); ctx.sound('good');
+              ctx.say(F.pickPraise(rng) + ' Da sind ' + F.numWord(Math.max(t.a, t.b)) + ' Fische drin.');
+              setTimeout(resolve, 1500);
+            } else {
+              wrong++; ctx.mistake(); ctx.sound('wrong'); F.ui.shake(b);
+              ctx.say('Zähl nochmal nach!');
+              if (wrong >= 2) F.ui.pulse(bs[t.answer]);
+            }
+          }, true);
+        });
+      });
+    }
+
+    async function doPlusMinus(t) {
+      shore.innerHTML = bucketHtml();
+      var bf = shore.querySelector('.bucket-fish');
+      addFishTo(bf, t.n);
+      await ctx.say('Im Eimer sind ' + F.countPhrase(t.n, 'Fisch', 'Fische', 'ein') + '.');
+      if (!ctx.alive()) return;
+      if (t.type === 'plus') {
+        await ctx.say('Schau, ein Fisch springt dazu!');
+        var f = F.el('div', 'b-fish jump-in', F.art.fish(rng.pick(FISH_COLORS)));
+        bf.appendChild(f);
+        ctx.sound('pop');
+      } else {
+        await ctx.say('Schau, ein Fisch springt raus!');
+        var last = bf.lastElementChild;
+        if (last) { last.classList.add('jump-out'); ctx.sound('jump'); setTimeout(function () { last.remove(); }, 800); }
+      }
+      await F.wait(900);
+      if (!ctx.alive()) return;
+      ctx.say('Wie viele Fische sind jetzt im Eimer?');
+      await askOptions(water, t.options, t.answer, t.dots);
+    }
+
+    async function run() {
+      ctx.progress(0, TASKS);
+      for (taskNo = 0; taskNo < TASKS; taskNo++) {
+        if (!ctx.alive()) return;
+        water.innerHTML = '';
+        var t = F.gen.fischeTask(rng, ctx.level);
+        if (t.type === 'catch') await doCatch(t);
+        else if (t.type === 'count') await doCount(t);
+        else if (t.type === 'more') await doMore(t);
+        else await doPlusMinus(t);
+        if (!ctx.alive()) return;
+        ctx.progress(taskNo + 1, TASKS);
+        await F.wait(300);
+      }
+      ctx.finish({ tasks: TASKS });
+    }
+    run();
+
+    return { destroy: function () { alive = false; stopSwim(); document.querySelectorAll('.fly-fish').forEach(function (e) { e.remove(); }); } };
+  }
+
+  F.registerGame({
+    id: 'fische', title: 'Fische fangen', icon: '🐟', color: '#3d8bfd',
+    skill: 'Zählen, Mengen, Ziffern 1–10, mehr/weniger, +1/−1', unlockAt: 0, create: create
+  });
+})();
+
+/* ==== js/games/memory.js ==== */
+/* Station 2: Memory – Merkfaehigkeit, Wortschatz Tiere, Menge<->Ziffer, Tier<->Schatten */
+(function () {
+  var ANIMALS = [
+    ['🐶', 'Hund'], ['🐱', 'Katze'], ['🐭', 'Maus'], ['🐰', 'Hase'], ['🦊', 'Fuchs'], ['🐻', 'Bär'],
+    ['🐼', 'Panda'], ['🐨', 'Koala'], ['🐯', 'Tiger'], ['🦁', 'Löwe'], ['🐮', 'Kuh'], ['🐷', 'Schwein'],
+    ['🐸', 'Frosch'], ['🐵', 'Affe'], ['🐔', 'Huhn'], ['🐧', 'Pinguin'], ['🐢', 'Schildkröte'], ['🐙', 'Krake'],
+    ['🦋', 'Schmetterling'], ['🐝', 'Biene'], ['🐳', 'Wal'], ['🦉', 'Eule'], ['🐴', 'Pferd'], ['🦒', 'Giraffe']
+  ];
+  var LEVELS = {
+    1: { pairs: 3, mode: 'same' },
+    2: { pairs: 4, mode: 'same' },
+    3: { pairs: 6, mode: 'same' },
+    4: { pairs: 6, mode: 'dots' },
+    5: { pairs: 8, mode: 'same' },
+    6: { pairs: 8, mode: 'shadow' }
+  };
+
+  /* Reiner Generator: Kartenstapel. Jede Karte {key, face, kind, label} */
+  F.gen.memoryDeck = function (rng, level) {
+    var L = LEVELS[level] || LEVELS[1];
+    var cards = [];
+    if (L.mode === 'dots') {
+      var nums = rng.sample([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], L.pairs);
+      nums.forEach(function (n) {
+        cards.push({ key: 'n' + n, kind: 'digit', value: n, label: F.numWord(n) });
+        cards.push({ key: 'n' + n, kind: 'dots', value: n, label: F.numWord(n) });
+      });
+    } else {
+      rng.sample(ANIMALS, L.pairs).forEach(function (a) {
+        cards.push({ key: a[1], kind: 'emoji', face: a[0], label: a[1] });
+        cards.push({ key: a[1], kind: L.mode === 'shadow' ? 'shadow' : 'emoji', face: a[0], label: a[1] });
+      });
+    }
+    return { pairs: L.pairs, mode: L.mode, cards: rng.shuffle(cards) };
+  };
+  F.gen.memoryLevels = LEVELS;
+
+  function faceHtml(c) {
+    if (c.kind === 'digit') return '<span class="num">' + c.value + '</span>';
+    if (c.kind === 'dots') return F.art.dots(c.value);
+    if (c.kind === 'shadow') return '<span class="emo shadow">' + c.face + '</span>';
+    return '<span class="emo">' + c.face + '</span>';
+  }
+
+  function create(stage, ctx) {
+    var rng = ctx.rng;
+    var deck = F.gen.memoryDeck(rng, ctx.level);
+    var n = deck.cards.length;
+    var cols = n <= 6 ? 3 : 4;
+    stage.innerHTML = '<div class="mem-grid" style="--cols:' + cols + ';--rows:' + Math.ceil(n / cols) + '"></div>';
+    var grid = stage.querySelector('.mem-grid');
+    var open = [], found = 0, busy = false, mismatches = 0;
+    var timers = [];
+
+    ctx.progress(0, deck.pairs);
+    deck.cards.forEach(function (c) {
+      var b = F.el('button', 'mem-card');
+      b.innerHTML = '<div class="mem-inner"><div class="mem-back">❄</div><div class="mem-front">' + faceHtml(c) + '</div></div>';
+      F.onTap(b, function () {
+        if (busy || b.classList.contains('flipped') || !ctx.alive()) return;
+        ctx.sound('tap');
+        b.classList.add('flipped');
+        open.push({ el: b, c: c });
+        if (open.length === 2) {
+          busy = true;
+          var a = open[0], z = open[1];
+          if (a.c.key === z.c.key) {
+            timers.push(setTimeout(function () {
+              a.el.classList.add('matched'); z.el.classList.add('matched');
+              ctx.sound('good');
+              found++;
+              ctx.progress(found, deck.pairs);
+              ctx.say(a.c.label + '!', { noRepeat: true });
+              open = []; busy = false;
+              if (found === deck.pairs) {
+                timers.push(setTimeout(function () {
+                  var stars = mismatches <= deck.pairs ? 3 : mismatches <= deck.pairs * 2 ? 2 : 1;
+                  ctx.say('Du hast alle Paare gefunden!').then(function () { ctx.finish({ stars: stars }); });
+                }, 700));
+              }
+            }, 450));
+          } else {
+            mismatches++; ctx.mistake();
+            timers.push(setTimeout(function () {
+              a.el.classList.remove('flipped'); z.el.classList.remove('flipped');
+              open = []; busy = false;
+            }, 1100));
+          }
+        }
+      }, true);
+      grid.appendChild(b);
+    });
+
+    var intro = deck.mode === 'dots' ? 'Finde die Zahl und die passenden Punkte!'
+      : deck.mode === 'shadow' ? 'Finde das Tier und seinen Schatten!'
+        : 'Finde immer zwei gleiche Tiere!';
+    ctx.say(intro);
+    return { destroy: function () { timers.forEach(clearTimeout); } };
+  }
+
+  F.registerGame({
+    id: 'memory', title: 'Memory', icon: '🃏', color: '#9b6bff',
+    skill: 'Merkfähigkeit, Tiernamen, Menge ↔ Ziffer, Formkonstanz', unlockAt: 0, create: create
+  });
+})();
+
+/* ==== js/games/huepf.js ==== */
+/* Station 3: Fluffi huepft – Jump & Run: Reaktion, Auge-Hand, Farben, selektive Aufmerksamkeit */
+(function () {
+  var LEVELS = {
+    1: { speed: 150, gap: [520, 820], color: false, tall: 0, length: 30 },
+    2: { speed: 170, gap: [460, 760], color: false, tall: 0.2, length: 35 },
+    3: { speed: 180, gap: [440, 720], color: true, tall: 0.2, length: 38 },
+    4: { speed: 200, gap: [420, 680], color: true, tall: 0.35, length: 40 },
+    5: { speed: 220, gap: [400, 640], color: true, tall: 0.45, length: 42 },
+    6: { speed: 245, gap: [380, 600], color: true, tall: 0.55, length: 45 }
+  };
+  var STAR_COLORS = [['rot', '#ff4d5e'], ['blau', '#3d8bfd'], ['gelb', '#ffd23f'], ['grün', '#33c46b']];
+  var GROUND = 330, H = 400, GRAV = 1700, JUMP = -720;
+
+  /* Reiner Generator: Strecke mit Hindernissen und Sternen */
+  F.gen.huepfCourse = function (rng, level) {
+    var L = LEVELS[level] || LEVELS[1];
+    var total = L.speed * L.length;
+    var items = [];
+    var x = 700;
+    var target = L.color ? rng.pick(STAR_COLORS) : null;
+    while (x < total - 300) {
+      var tall = rng.chance(L.tall);
+      items.push({ kind: tall ? 'snowman' : 'ice', x: x, w: tall ? 46 : 44, h: tall ? 74 : 42 });
+      // Stern ueber dem Hindernis oder dazwischen
+      var sx = x + rng.int(-10, 10);
+      var high = rng.chance(0.6);
+      var col = target ? (rng.chance(0.55) ? target : rng.pick(STAR_COLORS)) : STAR_COLORS[2];
+      items.push({ kind: 'star', x: high ? sx : x + rng.int(160, 240), y: high ? GROUND - 170 : GROUND - 40, color: col[1], colorName: col[0] });
+      x += rng.int(L.gap[0], L.gap[1]);
+    }
+    return { total: total, speed: L.speed, target: target, items: items };
+  };
+  F.gen.huepfLevels = LEVELS;
+
+  function starPath(c, x, y, r) {
+    c.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+      c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    c.closePath();
+  }
+
+  function create(stage, ctx) {
+    var rng = ctx.rng;
+    var course = F.gen.huepfCourse(rng, ctx.level);
+    stage.innerHTML = '<canvas class="game-canvas"></canvas><div class="tap-hint">👆</div><div class="hud-target"></div>';
+    var cv = stage.querySelector('canvas');
+    var c = cv.getContext('2d');
+    var hint = stage.querySelector('.tap-hint');
+    var hud = stage.querySelector('.hud-target');
+    var img = F.art.toImage(F.art.fluffi(F.state.outfit, 'normal'));
+    var scale = 1, vw = 800, dpr = Math.min(2, window.devicePixelRatio || 1);
+    var p = { x: 130, y: GROUND, vy: 0, onGround: true, inv: 0, squash: 0 };
+    var cam = 0, raf = 0, running = false, done = false;
+    var hits = 0, wrongStars = 0, goodStars = 0, obstacles = 0;
+    var mountains = [];
+    for (var m = 0; m < 12; m++) mountains.push({ x: m * 260 + rng.int(0, 80), h: rng.int(80, 160) });
+    course.items.forEach(function (it) { if (it.kind !== 'star') obstacles++; });
+
+    if (course.target) {
+      hud.innerHTML = '<svg viewBox="0 0 40 40"><path d="' + 'M20 2 L25 15 L39 15 L28 24 L32 38 L20 30 L8 38 L12 24 L1 15 L15 15 Z' + '" fill="' + course.target[1] + '" stroke="#4e4a5e" stroke-width="2"/></svg><span class="cnt">0</span>';
+    } else {
+      hud.innerHTML = '<svg viewBox="0 0 40 40"><path d="M20 2 L25 15 L39 15 L28 24 L32 38 L20 30 L8 38 L12 24 L1 15 L15 15 Z" fill="#ffd23f" stroke="#4e4a5e" stroke-width="2"/></svg><span class="cnt">0</span>';
+    }
+    var cnt = hud.querySelector('.cnt');
+
+    function resize() {
+      var w = stage.clientWidth, h = stage.clientHeight;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      scale = (h * dpr) / H;
+      vw = (w * dpr) / scale;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function jump(e) {
+      if (e) e.preventDefault();
+      if (!running) return;
+      if (p.onGround) {
+        p.vy = JUMP; p.onGround = false; ctx.sound('jump');
+        hint.style.display = 'none';
+      }
+    }
+    stage.addEventListener('pointerdown', jump);
+
+    function draw() {
+      c.setTransform(scale, 0, 0, scale, 0, 0);
+      // Himmel
+      var g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#9fd4ff'); g.addColorStop(1, '#e8f6ff');
+      c.fillStyle = g; c.fillRect(0, 0, vw, H);
+      // Berge (Parallaxe)
+      c.fillStyle = '#c9e3f7';
+      mountains.forEach(function (mt) {
+        var mx = ((mt.x - cam * 0.3) % 3120 + 3120) % 3120 - 200;
+        c.beginPath(); c.moveTo(mx, GROUND); c.lineTo(mx + 130, GROUND - mt.h); c.lineTo(mx + 260, GROUND); c.fill();
+        c.fillStyle = '#fff'; c.beginPath(); c.moveTo(mx + 100, GROUND - mt.h + 30); c.lineTo(mx + 130, GROUND - mt.h); c.lineTo(mx + 160, GROUND - mt.h + 30); c.fill();
+        c.fillStyle = '#c9e3f7';
+      });
+      // Boden
+      c.fillStyle = '#ffffff'; c.fillRect(0, GROUND, vw, H - GROUND);
+      c.fillStyle = '#d7ecfb';
+      for (var k = 0; k < vw / 60 + 2; k++) {
+        var gx = k * 60 - (cam % 60);
+        c.beginPath(); c.ellipse(gx, GROUND + 26, 18, 4, 0, 0, Math.PI * 2); c.fill();
+      }
+      // Ziel-Iglu
+      var ix = course.total - cam + p.x;
+      if (ix < vw + 200) {
+        c.fillStyle = '#f4fbff'; c.strokeStyle = '#8fb8d8'; c.lineWidth = 3;
+        c.beginPath(); c.arc(ix + 80, GROUND, 80, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = '#5a7fa0'; c.beginPath(); c.arc(ix + 80, GROUND, 28, Math.PI, 0); c.fill();
+        c.strokeStyle = '#cfe3f2';
+        for (var r = 1; r < 4; r++) { c.beginPath(); c.arc(ix + 80, GROUND, 80, Math.PI + r * 0.25, Math.PI + r * 0.25 + 0.01); c.stroke(); }
+        c.beginPath(); c.moveTo(ix + 10, GROUND - 30); c.lineTo(ix + 150, GROUND - 30); c.stroke();
+        c.beginPath(); c.moveTo(ix + 30, GROUND - 58); c.lineTo(ix + 130, GROUND - 58); c.stroke();
+      }
+      // Objekte
+      course.items.forEach(function (it) {
+        var sx = it.x - cam + p.x;
+        if (sx < -100 || sx > vw + 100 || it.gone) return;
+        if (it.kind === 'ice') {
+          c.fillStyle = '#bfe8ff'; c.strokeStyle = '#5ea8d6'; c.lineWidth = 3;
+          c.beginPath(); c.roundRect ? c.roundRect(sx, GROUND - it.h, it.w, it.h, 6) : c.rect(sx, GROUND - it.h, it.w, it.h); c.fill(); c.stroke();
+          c.strokeStyle = '#fff'; c.beginPath(); c.moveTo(sx + 8, GROUND - it.h + 8); c.lineTo(sx + 18, GROUND - it.h + 8); c.stroke();
+        } else if (it.kind === 'snowman') {
+          c.fillStyle = '#fff'; c.strokeStyle = '#8fb8d8'; c.lineWidth = 3;
+          c.beginPath(); c.arc(sx + 23, GROUND - 22, 23, 0, Math.PI * 2); c.fill(); c.stroke();
+          c.beginPath(); c.arc(sx + 23, GROUND - 58, 16, 0, Math.PI * 2); c.fill(); c.stroke();
+          c.fillStyle = '#222'; c.beginPath(); c.arc(sx + 18, GROUND - 61, 2.5, 0, 7); c.arc(sx + 28, GROUND - 61, 2.5, 0, 7); c.fill();
+          c.fillStyle = '#ff8c1a'; c.beginPath(); c.moveTo(sx + 23, GROUND - 56); c.lineTo(sx + 36, GROUND - 54); c.lineTo(sx + 23, GROUND - 52); c.fill();
+        } else if (it.kind === 'star') {
+          var bob = Math.sin((cam + it.x) / 40) * 4;
+          c.fillStyle = it.color; c.strokeStyle = '#4e4a5e'; c.lineWidth = 3;
+          starPath(c, sx, it.y + bob, 20); c.fill(); c.stroke();
+        }
+      });
+      // Fluffi
+      var fw = 70, fh = 88;
+      c.save();
+      c.translate(p.x, p.y);
+      var sq = p.squash > 0 ? 1 - p.squash * 0.25 : 1;
+      if (!p.onGround) c.rotate(Math.max(-0.25, Math.min(0.25, p.vy / 3000)));
+      c.scale(1 / sq, sq);
+      if (p.inv > 0 && Math.floor(p.inv * 10) % 2 === 0) c.globalAlpha = 0.4;
+      if (img.complete && img.naturalWidth) c.drawImage(img, -fw / 2, -fh, fw, fh);
+      else { c.fillStyle = '#bcb8cc'; c.fillRect(-fw / 2, -fh, fw, fh); }
+      c.restore();
+    }
+
+    function hitTest(it, sx) {
+      var px1 = p.x - 22, px2 = p.x + 22, py1 = p.y - 80, py2 = p.y - 4;
+      if (it.kind === 'star') return sx + 18 > px1 && sx - 18 < px2 && it.y + 18 > py1 && it.y - 18 < py2;
+      return sx + it.w - 6 > px1 && sx + 6 < px2 && GROUND - it.h + 6 < py2;
+    }
+
+    var last = 0;
+    function step(now) {
+      if (!ctx.alive()) return;
+      var dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+      if (running) {
+        cam += course.speed * dt;
+        p.vy += GRAV * dt; p.y += p.vy * dt;
+        if (p.y >= GROUND) { if (!p.onGround) p.squash = 1; p.y = GROUND; p.vy = 0; p.onGround = true; }
+        p.squash = Math.max(0, p.squash - dt * 5);
+        p.inv = Math.max(0, p.inv - dt);
+        course.items.forEach(function (it) {
+          if (it.gone) return;
+          var sx = it.x - cam + p.x;
+          if (sx < p.x - 80 || sx > p.x + 80) return;
+          if (!hitTest(it, sx)) return;
+          if (it.kind === 'star') {
+            it.gone = true;
+            if (!course.target || it.colorName === course.target[0]) {
+              goodStars++; cnt.textContent = goodStars; ctx.sound('star');
+            } else {
+              wrongStars++; ctx.mistake(); ctx.sound('wrong');
+              ctx.say('Ups, der war ' + it.colorName + '.', { noRepeat: true });
+            }
+          } else if (p.inv <= 0) {
+            hits++; ctx.mistake(); p.inv = 1.3; ctx.sound('bump');
+            ctx.say(rng.pick(['Hoppla!', 'Huch!', 'Autsch, spring früher!']), { noRepeat: true });
+          }
+        });
+        ctx.progressBar(cam / course.total);
+        if (cam >= course.total && !done) {
+          done = true; running = false;
+          ctx.say('Geschafft! Fluffi ist am Iglu!').then(function () {
+            ctx.finish({ stars: F.starsFor(hits + wrongStars, Math.max(5, obstacles)) });
+          });
+        }
+      }
+      draw();
+      raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(function (t) { last = t; step(t); });
+
+    var intro = course.target
+      ? 'Tippe, dann springt Fluffi! Sammle nur die ' + course.target[0] + 'en Sterne!'
+      : 'Tippe auf den Bildschirm, dann springt Fluffi! Spring über das Eis und sammle Sterne!';
+    if (course.target && course.target[0] === 'lila') intro = intro.replace('lilaen', 'lila');
+    ctx.progressBar(0);
+    ctx.say(intro).then(function () { if (ctx.alive()) running = true; });
+
+    return {
+      destroy: function () {
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', resize);
+      }
+    };
+  }
+
+  F.registerGame({
+    id: 'huepf', title: 'Fluffi hüpft', icon: '🏃', color: '#ff7a59',
+    skill: 'Reaktion, Auge-Hand-Koordination, Farben, Aufmerksamkeit', unlockAt: 0, create: create
+  });
+})();
+
+/* ==== js/games/muster.js ==== */
+/* Station 4: Muster-Kette – Formen, Farben, Muster erkennen und fortsetzen */
+(function () {
+  var COLORS = [['rot', '#ff4d5e'], ['blau', '#3d8bfd'], ['gelb', '#ffd23f'], ['grün', '#33c46b'], ['lila', '#a66bff']];
+  var SHAPES = [['circle', 'Kreis', 'm'], ['square', 'Quadrat', 'n'], ['triangle', 'Dreieck', 'n'], ['heart', 'Herz', 'n'], ['star', 'Stern', 'm']];
+  var LEVELS = {
+    1: { units: ['AB'], vary: 'color', missing: 'end' },
+    2: { units: ['AB'], vary: 'both', missing: 'end' },
+    3: { units: ['AAB', 'ABB'], vary: 'both', missing: 'end' },
+    4: { units: ['ABC', 'AB'], vary: 'both', missing: 'end' },
+    5: { units: ['ABC', 'AABB', 'AAB'], vary: 'both', missing: 'any' },
+    6: { units: ['AABB', 'ABAC', 'ABC'], vary: 'size', missing: 'any' }
+  };
+  var TASKS = 5;
+
+  function itemKey(it) { return it.shape + '|' + it.color + '|' + (it.size || 'big'); }
+
+  /* Reiner Generator: Musterkette mit Luecke und 3 Antwortmoeglichkeiten */
+  F.gen.musterTask = function (rng, level) {
+    var L = LEVELS[level] || LEVELS[1];
+    var unit = rng.pick(L.units);
+    var letters = [];
+    unit.split('').forEach(function (ch) { if (letters.indexOf(ch) < 0) letters.push(ch); });
+    var cols = rng.sample(COLORS, letters.length);
+    var shps = rng.sample(SHAPES, letters.length);
+    var fixedShape = rng.pick(SHAPES);
+    var sizes = rng.shuffle(['big', 'small']);
+    var useSize = L.vary === 'size' && letters.length === 2 && rng.chance(0.6);
+    var map = {};
+    letters.forEach(function (ch, i) {
+      if (L.vary === 'color') map[ch] = { shape: 'circle', shapeName: 'Kreis', g: 'm', color: cols[i][1], colorName: cols[i][0] };
+      else if (useSize) map[ch] = { shape: fixedShape[0], shapeName: fixedShape[1], g: fixedShape[2], color: cols[0][1], colorName: cols[0][0], size: sizes[i] };
+      else map[ch] = { shape: shps[i][0], shapeName: shps[i][1], g: shps[i][2], color: cols[i][1], colorName: cols[i][0] };
+    });
+    var total = unit.length * 2 + (unit.length >= 3 ? 1 : 2);
+    var seq = [];
+    for (var k = 0; k < total; k++) seq.push(map[unit[k % unit.length]]);
+    var missing = L.missing === 'end' ? total - 1 : rng.int(unit.length, total - 1);
+    var answer = seq[missing];
+    // Ablenker: andere Elemente aus der Kette, sonst zufaellige neue
+    var opts = [answer];
+    var keys = [itemKey(answer)];
+    letters.forEach(function (ch) { var it = map[ch]; if (keys.indexOf(itemKey(it)) < 0 && opts.length < 3) { opts.push(it); keys.push(itemKey(it)); } });
+    var guard = 0;
+    while (opts.length < 3 && guard++ < 50) {
+      var cc = rng.pick(COLORS), ss = L.vary === 'color' ? SHAPES[0] : rng.pick(SHAPES);
+      var it2 = { shape: ss[0], shapeName: ss[1], g: ss[2], color: cc[1], colorName: cc[0] };
+      if (keys.indexOf(itemKey(it2)) < 0) { opts.push(it2); keys.push(itemKey(it2)); }
+    }
+    return { unit: unit, seq: seq, missing: missing, answer: answer, options: rng.shuffle(opts), atEnd: missing === total - 1 };
+  };
+  F.gen.musterLevels = LEVELS;
+  F.gen.musterKey = itemKey;
+
+  /* "ein roter Kreis", "ein rotes Herz", "ein lila Stern" */
+  F.gen.musterName = function (it) {
+    var adj = it.colorName;
+    if (adj !== 'lila') adj += it.g === 'm' ? 'er' : 'es';
+    var size = it.size === 'small' ? (it.g === 'm' ? 'kleiner ' : 'kleines ') : it.size === 'big' ? (it.g === 'm' ? 'großer ' : 'großes ') : '';
+    return 'ein ' + size + adj + ' ' + it.shapeName;
+  };
+
+  function create(stage, ctx) {
+    var rng = ctx.rng;
+    stage.innerHTML = '<div class="chain-wrap"><div class="chain"></div></div><div class="answers shape-answers"></div>';
+    var chain = stage.querySelector('.chain');
+    var answers = stage.querySelector('.answers');
+
+    async function one(t) {
+      chain.innerHTML = '';
+      answers.innerHTML = '';
+      var slotEl = null;
+      t.seq.forEach(function (it, i) {
+        var d = F.el('div', 'chain-item' + (i === t.missing ? ' gap' : ''));
+        if (i !== t.missing) d.style.animationDelay = (i * 0.08) + 's';
+        d.innerHTML = i === t.missing ? '<span class="q">?</span>' : F.art.shape(it.shape, it.color, it.size);
+        if (i === t.missing) slotEl = d;
+        chain.appendChild(d);
+      });
+      ctx.say(t.atEnd ? 'Was kommt als Nächstes in der Kette?' : 'Was fehlt in der Kette?');
+      await new Promise(function (resolve) {
+        var wrong = 0, done = false;
+        t.options.forEach(function (it) {
+          var b = F.el('button', 'answer-card shape-card', F.art.shape(it.shape, it.color, it.size));
+          var ok = F.gen.musterKey(it) === F.gen.musterKey(t.answer);
+          F.onTap(b, function () {
+            if (done || !ctx.alive()) return;
+            if (ok) {
+              done = true; b.classList.add('correct'); ctx.sound('good');
+              slotEl.classList.remove('gap'); slotEl.classList.add('filled');
+              slotEl.innerHTML = F.art.shape(it.shape, it.color, it.size);
+              chain.classList.remove('wave'); void chain.offsetWidth; chain.classList.add('wave');
+              ctx.say(F.pickPraise(rng) + ' ' + F.gen.musterName(it).replace(/^ein/, 'Ein') + '.');
+              setTimeout(resolve, 1600);
+            } else {
+              wrong++; ctx.mistake(); ctx.sound('wrong'); F.ui.shake(b);
+              ctx.say(F.pickRetry(rng));
+              if (wrong >= 2) answers.querySelectorAll('.shape-card').forEach(function (x, i) {
+                if (F.gen.musterKey(t.options[i]) === F.gen.musterKey(t.answer)) F.ui.pulse(x);
+              });
+            }
+          }, true);
+          answers.appendChild(b);
+        });
+      });
+    }
+
+    (async function () {
+      ctx.progress(0, TASKS);
+      for (var i = 0; i < TASKS; i++) {
+        if (!ctx.alive()) return;
+        await one(F.gen.musterTask(rng, ctx.level));
+        if (!ctx.alive()) return;
+        ctx.progress(i + 1, TASKS);
+      }
+      ctx.finish({ tasks: TASKS });
+    })();
+    return {};
+  }
+
+  F.registerGame({
+    id: 'muster', title: 'Muster-Kette', icon: '🔷', color: '#14b8a6',
+    skill: 'Formen, Farben, Muster erkennen und fortsetzen', unlockAt: 5, create: create
+  });
+})();
+
+/* ==== js/games/schlitten.js ==== */
+/* Station 5: Schlittenfahrt 3D – Perspektiv-Fahrspiel: Raumlage links/rechts, Reaktion.
+   3D-Wirkung per Perspektivprojektion auf 2D-Canvas (keine WebGL-Abhaengigkeit, laeuft auf schwachen Tablets). */
+(function () {
+  var LEVELS = {
+    1: { speed: 20, duration: 32, snowman: 0, gates: 'none' },
+    2: { speed: 23, duration: 35, snowman: 0.3, gates: 'none' },
+    3: { speed: 25, duration: 38, snowman: 0.25, gates: 'single' },
+    4: { speed: 27, duration: 40, snowman: 0.25, gates: 'double-arrow' },
+    5: { speed: 30, duration: 42, snowman: 0.3, gates: 'double' },
+    6: { speed: 33, duration: 45, snowman: 0.35, gates: 'double' }
+  };
+  var D = 60, NEAR = 6, PD = 1.6; // Spawn-Tiefe, Kamera, Tiefe des Spielers
+
+  /* Reiner Generator: Fahrplan mit Ereignissen */
+  F.gen.schlittenPlan = function (rng, level) {
+    var L = LEVELS[level] || LEVELS[1];
+    var ev = [];
+    var t = 2.5;
+    var sinceGate = 0;
+    while (t < L.duration - 3) {
+      var gate = L.gates !== 'none' && sinceGate >= 2 && rng.chance(0.35);
+      if (gate) {
+        var side = rng.pick([-1, 1]);
+        ev.push({ t: t, kind: 'gate', side: side, double: L.gates !== 'single', arrow: L.gates !== 'double' });
+        sinceGate = 0;
+        t += rng.int(30, 38) / 10;
+      } else {
+        sinceGate++;
+        var kind = rng.chance(L.snowman) ? 'snowman' : 'fish';
+        ev.push({ t: t, kind: kind, lane: rng.int(-1, 1) });
+        if (kind === 'fish' && rng.chance(0.35)) ev.push({ t: t + 0.45, kind: 'fish', lane: ev[ev.length - 1].lane });
+        t += rng.int(14, 22) / 10;
+      }
+    }
+    return { speed: L.speed, duration: L.duration, events: ev };
+  };
+  F.gen.schlittenLevels = LEVELS;
+
+  function create(stage, ctx) {
+    var rng = ctx.rng;
+    var plan = F.gen.schlittenPlan(rng, ctx.level);
+    stage.innerHTML = '<canvas class="game-canvas"></canvas>' +
+      '<button class="steer left" aria-label="links">◀</button><button class="steer right" aria-label="rechts">▶</button>' +
+      '<div class="hud-target"><svg viewBox="0 0 100 60">' + F.art.fish('#ff9f43').replace(/<svg[^>]*>|<\/svg>/g, '') + '</svg><span class="cnt">0</span></div>';
+    var cv = stage.querySelector('canvas');
+    var c = cv.getContext('2d');
+    var cnt = stage.querySelector('.cnt');
+    var img = F.art.toImage(F.art.fluffi(F.state.outfit, 'happy'));
+    var fishImgs = ['#ff9f43', '#54a0ff', '#ff6b9a'].map(function (col) { return F.art.toImage(F.art.fish(col)); });
+    var dpr = Math.min(2, window.devicePixelRatio || 1), scale = 1, vw = 700, H = 400, HOR = 120;
+    var objs = [], evIdx = 0, elapsed = 0, travel = 0;
+    var p = { lane: 0, x: 0, tilt: 0, inv: 0 };
+    var running = false, done = false, raf = 0;
+    var fish = 0, mistakes = 0, tasks = 0;
+    var speechOk = F.speech.supported && F.state.settings.speech;
+    plan.events.forEach(function (e) { if (e.kind !== 'fish') tasks++; });
+
+    function resize() {
+      var w = stage.clientWidth, h = stage.clientHeight;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      scale = (h * dpr) / H; vw = (w * dpr) / scale;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function proj(d, lane) {
+      var s = NEAR / (NEAR + Math.max(-NEAR + 0.5, d));
+      var half = vw * 0.46 * s;
+      return { s: s, y: HOR + (H - HOR) * s, x: vw / 2 + lane * half * 0.66, half: half };
+    }
+
+    function steer(dir) {
+      if (!running) return;
+      var nl = Math.max(-1, Math.min(1, p.lane + dir));
+      if (nl !== p.lane) { p.lane = nl; ctx.sound('tap'); }
+    }
+    var bl = stage.querySelector('.steer.left'), br = stage.querySelector('.steer.right');
+    bl.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); steer(-1); });
+    br.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); steer(1); });
+    cv.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var r = cv.getBoundingClientRect();
+      steer(e.clientX - r.left < r.width / 2 ? -1 : 1);
+    });
+    var onKey = function (e) { if (e.key === 'ArrowLeft') steer(-1); if (e.key === 'ArrowRight') steer(1); };
+    window.addEventListener('keydown', onKey);
+
+    function spawn(e) {
+      if (e.kind === 'gate') {
+        var word = e.side < 0 ? 'links' : 'rechts';
+        objs.push({ kind: 'gate', d: D, lane: e.side, good: true, arrow: e.arrow || !speechOk });
+        if (e.double) objs.push({ kind: 'gate', d: D, lane: -e.side, good: false, arrow: false });
+        ctx.say('Fahr nach ' + word + '!', { noRepeat: true });
+      } else {
+        objs.push({ kind: e.kind, d: D, lane: e.lane, img: rng.pick(fishImgs) });
+      }
+    }
+
+    function resolve(o) {
+      var hitLane = p.lane === o.lane;
+      if (o.kind === 'fish' && hitLane) { o.gone = true; fish++; cnt.textContent = fish; ctx.sound('pop'); }
+      else if (o.kind === 'snowman' && hitLane && p.inv <= 0) { mistakes++; ctx.mistake(); p.inv = 1; ctx.sound('bump'); ctx.say('Hoppla!', { noRepeat: true }); }
+      else if (o.kind === 'gate' && o.good) {
+        if (hitLane) { ctx.sound('star'); o.passed = true; ctx.say(F.pickPraise(rng), { noRepeat: true }); }
+        else { mistakes++; ctx.mistake(); ctx.sound('wrong'); ctx.say(o.lane < 0 ? 'Links war richtig!' : 'Rechts war richtig!', { noRepeat: true }); }
+      }
+    }
+
+    function drawTree(x, y, s) {
+      var h = 120 * s, w = 60 * s;
+      c.fillStyle = '#7a5230'; c.fillRect(x - 5 * s, y - 14 * s, 10 * s, 14 * s);
+      c.fillStyle = '#2f8f5b';
+      for (var i = 0; i < 3; i++) {
+        c.beginPath(); c.moveTo(x, y - h + i * h * 0.22); c.lineTo(x + w / 2 + i * 6 * s, y - h * 0.35 + i * h * 0.15 - 14 * s); c.lineTo(x - w / 2 - i * 6 * s, y - h * 0.35 + i * h * 0.15 - 14 * s); c.fill();
+      }
+      c.fillStyle = '#fff';
+      c.beginPath(); c.moveTo(x, y - h); c.lineTo(x + w * 0.18, y - h * 0.8); c.lineTo(x - w * 0.18, y - h * 0.8); c.fill();
+    }
+
+    function drawGate(o, q) {
+      var s = q.s, x = q.x, y = q.y;
+      var w = q.half * 0.5, h = 150 * s;
+      var col = o.good || !o.arrow ? (o.lane < 0 ? '#ff4d5e' : '#3d8bfd') : '#999';
+      c.lineWidth = Math.max(2, 8 * s); c.strokeStyle = col;
+      c.beginPath(); c.moveTo(x - w, y); c.lineTo(x - w, y - h); c.lineTo(x + w, y - h); c.lineTo(x + w, y); c.stroke();
+      c.fillStyle = col;
+      c.beginPath(); c.moveTo(x - w, y - h); c.lineTo(x - w + 30 * s, y - h + 12 * s); c.lineTo(x - w, y - h + 24 * s); c.fill();
+      c.beginPath(); c.moveTo(x + w, y - h); c.lineTo(x + w - 30 * s, y - h + 12 * s); c.lineTo(x + w, y - h + 24 * s); c.fill();
+      if (o.arrow && o.good) {
+        c.fillStyle = '#ffd23f'; c.strokeStyle = '#4e4a5e'; c.lineWidth = Math.max(1.5, 4 * s);
+        var ax = x, ay = y - h - 50 * s, dir = o.lane < 0 ? -1 : 1, a = 40 * s;
+        c.beginPath(); c.moveTo(ax + dir * a, ay); c.lineTo(ax, ay - a * 0.7); c.lineTo(ax, ay - a * 0.3); c.lineTo(ax - dir * a, ay - a * 0.3);
+        c.lineTo(ax - dir * a, ay + a * 0.3); c.lineTo(ax, ay + a * 0.3); c.lineTo(ax, ay + a * 0.7); c.closePath(); c.fill(); c.stroke();
+      }
+    }
+
+    function draw() {
+      c.setTransform(scale, 0, 0, scale, 0, 0);
+      var g = c.createLinearGradient(0, 0, 0, HOR);
+      g.addColorStop(0, '#7cc4ff'); g.addColorStop(1, '#d9f0ff');
+      c.fillStyle = g; c.fillRect(0, 0, vw, HOR);
+      // Berge am Horizont
+      c.fillStyle = '#b9d9f2';
+      for (var m = 0; m < 6; m++) { var mx = m * vw / 5 - 40; c.beginPath(); c.moveTo(mx, HOR); c.lineTo(mx + vw / 10, HOR - 50 - (m % 2) * 25); c.lineTo(mx + vw / 5, HOR); c.fill(); }
+      // Schnee
+      c.fillStyle = '#f7fbff'; c.fillRect(0, HOR, vw, H - HOR);
+      // Piste mit Bewegungsstreifen
+      var bands = 24, step = 3;
+      for (var b = bands; b >= 0; b--) {
+        var d1 = b * step - (travel % (step * 2)), d2 = d1 + step;
+        if (d2 < -3) continue;
+        var q1 = proj(d1, 0), q2 = proj(d2, 0);
+        c.fillStyle = b % 2 ? '#cfe8fb' : '#bfdff7';
+        c.beginPath(); c.moveTo(vw / 2 - q1.half, q1.y); c.lineTo(vw / 2 + q1.half, q1.y); c.lineTo(vw / 2 + q2.half, q2.y); c.lineTo(vw / 2 - q2.half, q2.y); c.fill();
+      }
+      // Baeume am Rand (von hinten nach vorne)
+      var tstep = 6;
+      for (var td = D; td > -2; td -= tstep) {
+        var dd = td - (travel % tstep);
+        var ql = proj(dd, -2.0), qr = proj(dd, 2.0);
+        drawTree(ql.x, ql.y, ql.s); drawTree(qr.x, qr.y, qr.s);
+      }
+      // Objekte von hinten nach vorne
+      objs.slice().sort(function (a, b) { return b.d - a.d; }).forEach(function (o) {
+        if (o.gone || o.d < -2) return;
+        var q = proj(o.d, o.lane);
+        if (o.kind === 'fish') {
+          var fw = 90 * q.s, fh = 54 * q.s, bob = Math.sin((travel + o.d) * 0.8) * 6 * q.s;
+          if (o.img.complete) c.drawImage(o.img, q.x - fw / 2, q.y - fh - 20 * q.s + bob, fw, fh);
+        } else if (o.kind === 'snowman') {
+          var r1 = 34 * q.s, r2 = 24 * q.s;
+          c.fillStyle = '#fff'; c.strokeStyle = '#8fb8d8'; c.lineWidth = Math.max(1, 3 * q.s);
+          c.beginPath(); c.arc(q.x, q.y - r1, r1, 0, 7); c.fill(); c.stroke();
+          c.beginPath(); c.arc(q.x, q.y - 2 * r1 - r2 + 6 * q.s, r2, 0, 7); c.fill(); c.stroke();
+          c.fillStyle = '#ff8c1a'; c.beginPath(); c.moveTo(q.x, q.y - 2 * r1 - r2 + 8 * q.s); c.lineTo(q.x + 20 * q.s, q.y - 2 * r1 - r2 + 12 * q.s); c.lineTo(q.x, q.y - 2 * r1 - r2 + 16 * q.s); c.fill();
+          c.fillStyle = '#222'; c.beginPath(); c.arc(q.x - 8 * q.s, q.y - 2 * r1 - r2 + 2 * q.s, 3 * q.s, 0, 7); c.arc(q.x + 8 * q.s, q.y - 2 * r1 - r2 + 2 * q.s, 3 * q.s, 0, 7); c.fill();
+        } else if (o.kind === 'gate') drawGate(o, q);
+      });
+      // Spieler auf dem Schlitten
+      var pq = proj(PD, p.x);
+      c.save();
+      c.translate(pq.x, pq.y);
+      c.rotate(p.tilt);
+      if (p.inv > 0 && Math.floor(p.inv * 10) % 2 === 0) c.globalAlpha = 0.45;
+      var sw = 120 * pq.s;
+      c.fillStyle = '#d9483b'; c.strokeStyle = '#4e4a5e'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(-sw / 2, -18); c.lineTo(sw / 2, -18); c.lineTo(sw / 2 - 8, -4); c.lineTo(-sw / 2 + 8, -4); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = '#8a5a2b'; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(-sw / 2, 0); c.lineTo(sw / 2 - 4, 0); c.quadraticCurveTo(sw / 2 + 12, 0, sw / 2 + 8, -14); c.stroke();
+      var fw = 86 * pq.s, fh = 108 * pq.s;
+      if (img.complete && img.naturalWidth) c.drawImage(img, -fw / 2, -fh - 10, fw, fh);
+      c.restore();
+    }
+
+    var last = 0;
+    function step(now) {
+      if (!ctx.alive()) return;
+      var dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+      if (running) {
+        elapsed += dt;
+        var dv = plan.speed * dt;
+        travel += dv;
+        while (evIdx < plan.events.length && plan.events[evIdx].t <= elapsed) spawn(plan.events[evIdx++]);
+        objs.forEach(function (o) {
+          var before = o.d;
+          o.d -= dv;
+          if (before > PD && o.d <= PD && !o.gone) resolve(o);
+        });
+        objs = objs.filter(function (o) { return o.d > -4; });
+        p.inv = Math.max(0, p.inv - dt);
+        ctx.progressBar(elapsed / plan.duration);
+        if (elapsed >= plan.duration && !done) {
+          done = true; running = false;
+          ctx.say('Was für eine Fahrt! Du hast ' + F.countPhrase(fish, 'Fisch', 'Fische') + ' gesammelt.').then(function () {
+            ctx.finish({ stars: F.starsFor(mistakes, Math.max(4, tasks)) });
+          });
+        }
+      }
+      var tx = p.lane;
+      p.tilt += ((tx - p.x) * 0.35 - p.tilt) * Math.min(1, dt * 10);
+      p.x += (tx - p.x) * Math.min(1, dt * 9);
+      draw();
+      raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(function (t) { last = t; step(t); });
+
+    var intro = 'Los geht die Schlittenfahrt! Tippe links oder rechts, dann lenkt Fluffi. Sammle die Fische!';
+    if (plan.events.some(function (e) { return e.kind === 'snowman'; })) intro += ' Pass auf die Schneemänner auf!';
+    if (plan.events.some(function (e) { return e.kind === 'gate'; })) intro += ' Und hör gut zu, durch welches Tor du fahren sollst!';
+    ctx.progressBar(0);
+    ctx.say(intro).then(function () { if (ctx.alive()) running = true; });
+
+    return { destroy: function () { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('keydown', onKey); } };
+  }
+
+  F.registerGame({
+    id: 'schlitten', title: 'Schlittenfahrt', icon: '🛷', color: '#e2557a',
+    skill: 'Raumlage links/rechts, Reaktion, Hörverstehen', unlockAt: 10, create: create
+  });
+})();
+
+/* ==== js/main.js ==== */
+/* Start der App */
+(function () {
+  F.state = F.store.load();
+  F.rewards.checkUnlocks(F.state);
+  F.app = document.getElementById('app');
+  F.speech.init();
+  // Doppeltipp-Zoom und Kontextmenue (langes Druecken) auf dem Tablet unterbinden
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+  // Bei Tab-Wechsel Sprache stoppen
+  document.addEventListener('visibilitychange', function () { if (document.hidden) F.speech.stop(); });
+  // Testeinstieg fuer Screenshots/Entwicklung: #test=hub|wardrobe|album|parents|<spielId>[&level=N][&stars=N]
+  var m = /test=([A-Za-z]+)/.exec(location.hash);
+  if (m) {
+    var lv = /level=(\d)/.exec(location.hash), sn = /stars=(\d+)/.exec(location.hash);
+    F.state.settings.speech = false;
+    if (sn) { F.state.stars = +sn[1]; F.rewards.checkUnlocks(F.state); }
+    if (F.games[m[1]]) { if (lv) F.state.levels[m[1]] = +lv[1]; F.ui.runGame(m[1]); }
+    else if (F.ui[m[1]]) F.ui[m[1]](false);
+    return;
+  }
+  F.ui.start();
+})();
+
+</script>
+</body>
+</html>
